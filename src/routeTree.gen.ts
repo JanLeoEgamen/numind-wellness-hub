@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppMindGymRouteImport } from './routes/app.mind-gym'
+import { Route as AppNumiRouteImport } from './routes/app.numi'
+import { Route as AppQuestRouteImport } from './routes/app.quest'
 import { Route as AppResetRouteImport } from './routes/app.reset'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +37,16 @@ const AppMindGymRoute = AppMindGymRouteImport.update({
   path: '/mind-gym',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNumiRoute = AppNumiRouteImport.update({
+  id: '/numi',
+  path: '/numi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQuestRoute = AppQuestRouteImport.update({
+  id: '/quest',
+  path: '/quest',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppResetRoute = AppResetRouteImport.update({
   id: '/reset',
   path: '/reset',
@@ -45,12 +57,16 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/mind-gym': typeof AppMindGymRoute
+  '/app/numi': typeof AppNumiRoute
+  '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/mind-gym': typeof AppMindGymRoute
+  '/app/numi': typeof AppNumiRoute
+  '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
   '/app': typeof AppIndexRoute
 }
@@ -59,15 +75,32 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/mind-gym': typeof AppMindGymRoute
+  '/app/numi': typeof AppNumiRoute
+  '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/app/mind-gym' | '/app/reset' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/mind-gym'
+    | '/app/numi'
+    | '/app/quest'
+    | '/app/reset'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app/mind-gym' | '/app/reset' | '/app'
-  id: '__root__' | '/' | '/app' | '/app/mind-gym' | '/app/reset' | '/app/'
+  to: '/' | '/app/mind-gym' | '/app/numi' | '/app/quest' | '/app/reset' | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/mind-gym'
+    | '/app/numi'
+    | '/app/quest'
+    | '/app/reset'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,6 +138,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMindGymRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/numi': {
+      id: '/app/numi'
+      path: '/numi'
+      fullPath: '/app/numi'
+      preLoaderRoute: typeof AppNumiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/quest': {
+      id: '/app/quest'
+      path: '/quest'
+      fullPath: '/app/quest'
+      preLoaderRoute: typeof AppQuestRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/reset': {
       id: '/app/reset'
       path: '/reset'
@@ -117,12 +164,16 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppMindGymRoute: typeof AppMindGymRoute
+  AppNumiRoute: typeof AppNumiRoute
+  AppQuestRoute: typeof AppQuestRoute
   AppResetRoute: typeof AppResetRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppMindGymRoute: AppMindGymRoute,
+  AppNumiRoute: AppNumiRoute,
+  AppQuestRoute: AppQuestRoute,
   AppResetRoute: AppResetRoute,
   AppIndexRoute: AppIndexRoute,
 }
