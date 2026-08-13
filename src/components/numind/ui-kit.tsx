@@ -160,7 +160,7 @@ export function ToneIcon({
 }) {
   const s = size === "lg" ? "h-16 w-16 text-3xl" : size === "sm" ? "h-9 w-9 text-lg" : "h-12 w-12 text-2xl";
   return (
-    <span aria-hidden className={cn("grid place-items-center rounded-2xl", TONE_BG[tone] ?? TONE_BG.teal, s)}>
+    <span aria-hidden className={cn("grid place-items-center rounded-2xl", TONE_BG[tone] ?? "bg-teal/15", s)}>
       {emoji}
     </span>
   );
