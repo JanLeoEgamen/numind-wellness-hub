@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppFocusRouteImport } from './routes/app.focus'
 import { Route as AppMindGymRouteImport } from './routes/app.mind-gym'
 import { Route as AppNumiRouteImport } from './routes/app.numi'
 import { Route as AppQuestRouteImport } from './routes/app.quest'
 import { Route as AppResetRouteImport } from './routes/app.reset'
+import { Route as AppWellnessRouteImport } from './routes/app.wellness'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +32,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFocusRoute = AppFocusRouteImport.update({
+  id: '/focus',
+  path: '/focus',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMindGymRoute = AppMindGymRouteImport.update({
@@ -52,32 +59,43 @@ const AppResetRoute = AppResetRouteImport.update({
   path: '/reset',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWellnessRoute = AppWellnessRouteImport.update({
+  id: '/wellness',
+  path: '/wellness',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/focus': typeof AppFocusRoute
   '/app/mind-gym': typeof AppMindGymRoute
   '/app/numi': typeof AppNumiRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
+  '/app/wellness': typeof AppWellnessRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/focus': typeof AppFocusRoute
   '/app/mind-gym': typeof AppMindGymRoute
   '/app/numi': typeof AppNumiRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
+  '/app/wellness': typeof AppWellnessRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/focus': typeof AppFocusRoute
   '/app/mind-gym': typeof AppMindGymRoute
   '/app/numi': typeof AppNumiRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
+  '/app/wellness': typeof AppWellnessRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -85,21 +103,33 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/app/focus'
     | '/app/mind-gym'
     | '/app/numi'
     | '/app/quest'
     | '/app/reset'
+    | '/app/wellness'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app/mind-gym' | '/app/numi' | '/app/quest' | '/app/reset' | '/app'
+  to:
+    | '/'
+    | '/app/focus'
+    | '/app/mind-gym'
+    | '/app/numi'
+    | '/app/quest'
+    | '/app/reset'
+    | '/app/wellness'
+    | '/app'
   id:
     | '__root__'
     | '/'
     | '/app'
+    | '/app/focus'
     | '/app/mind-gym'
     | '/app/numi'
     | '/app/quest'
     | '/app/reset'
+    | '/app/wellness'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/focus': {
+      id: '/app/focus'
+      path: '/focus'
+      fullPath: '/app/focus'
+      preLoaderRoute: typeof AppFocusRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/mind-gym': {
       id: '/app/mind-gym'
       path: '/mind-gym'
@@ -159,22 +196,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppResetRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/wellness': {
+      id: '/app/wellness'
+      path: '/wellness'
+      fullPath: '/app/wellness'
+      preLoaderRoute: typeof AppWellnessRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppFocusRoute: typeof AppFocusRoute
   AppMindGymRoute: typeof AppMindGymRoute
   AppNumiRoute: typeof AppNumiRoute
   AppQuestRoute: typeof AppQuestRoute
   AppResetRoute: typeof AppResetRoute
+  AppWellnessRoute: typeof AppWellnessRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppFocusRoute: AppFocusRoute,
   AppMindGymRoute: AppMindGymRoute,
   AppNumiRoute: AppNumiRoute,
   AppQuestRoute: AppQuestRoute,
   AppResetRoute: AppResetRoute,
+  AppWellnessRoute: AppWellnessRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
