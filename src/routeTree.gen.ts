@@ -21,10 +21,13 @@ import { Route as AppMemoryLaneRouteImport } from './routes/app.memory-lane'
 import { Route as AppMindGymRouteImport } from './routes/app.mind-gym'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppNumiRouteImport } from './routes/app.numi'
+import { Route as AppPlayRouteImport } from './routes/app.play'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppQuestRouteImport } from './routes/app.quest'
 import { Route as AppResetRouteImport } from './routes/app.reset'
 import { Route as AppRewardsRouteImport } from './routes/app.rewards'
 import { Route as AppSafetyRouteImport } from './routes/app.safety'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppTogetherRouteImport } from './routes/app.together'
 import { Route as AppWellnessRouteImport } from './routes/app.wellness'
 
@@ -88,6 +91,16 @@ const AppNumiRoute = AppNumiRouteImport.update({
   path: '/numi',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPlayRoute = AppPlayRouteImport.update({
+  id: '/play',
+  path: '/play',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppQuestRoute = AppQuestRouteImport.update({
   id: '/quest',
   path: '/quest',
@@ -106,6 +119,11 @@ const AppRewardsRoute = AppRewardsRouteImport.update({
 const AppSafetyRoute = AppSafetyRouteImport.update({
   id: '/safety',
   path: '/safety',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTogetherRoute = AppTogetherRouteImport.update({
@@ -131,10 +149,13 @@ export interface FileRoutesByFullPath {
   '/app/mind-gym': typeof AppMindGymRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/numi': typeof AppNumiRoute
+  '/app/play': typeof AppPlayRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
   '/app/rewards': typeof AppRewardsRoute
   '/app/safety': typeof AppSafetyRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/together': typeof AppTogetherRoute
   '/app/wellness': typeof AppWellnessRoute
   '/app/': typeof AppIndexRoute
@@ -150,10 +171,13 @@ export interface FileRoutesByTo {
   '/app/mind-gym': typeof AppMindGymRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/numi': typeof AppNumiRoute
+  '/app/play': typeof AppPlayRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
   '/app/rewards': typeof AppRewardsRoute
   '/app/safety': typeof AppSafetyRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/together': typeof AppTogetherRoute
   '/app/wellness': typeof AppWellnessRoute
   '/app': typeof AppIndexRoute
@@ -171,10 +195,13 @@ export interface FileRoutesById {
   '/app/mind-gym': typeof AppMindGymRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/numi': typeof AppNumiRoute
+  '/app/play': typeof AppPlayRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
   '/app/rewards': typeof AppRewardsRoute
   '/app/safety': typeof AppSafetyRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/together': typeof AppTogetherRoute
   '/app/wellness': typeof AppWellnessRoute
   '/app/': typeof AppIndexRoute
@@ -193,10 +220,13 @@ export interface FileRouteTypes {
     | '/app/mind-gym'
     | '/app/notifications'
     | '/app/numi'
+    | '/app/play'
+    | '/app/profile'
     | '/app/quest'
     | '/app/reset'
     | '/app/rewards'
     | '/app/safety'
+    | '/app/settings'
     | '/app/together'
     | '/app/wellness'
     | '/app/'
@@ -212,10 +242,13 @@ export interface FileRouteTypes {
     | '/app/mind-gym'
     | '/app/notifications'
     | '/app/numi'
+    | '/app/play'
+    | '/app/profile'
     | '/app/quest'
     | '/app/reset'
     | '/app/rewards'
     | '/app/safety'
+    | '/app/settings'
     | '/app/together'
     | '/app/wellness'
     | '/app'
@@ -232,10 +265,13 @@ export interface FileRouteTypes {
     | '/app/mind-gym'
     | '/app/notifications'
     | '/app/numi'
+    | '/app/play'
+    | '/app/profile'
     | '/app/quest'
     | '/app/reset'
     | '/app/rewards'
     | '/app/safety'
+    | '/app/settings'
     | '/app/together'
     | '/app/wellness'
     | '/app/'
@@ -332,6 +368,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNumiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/play': {
+      id: '/app/play'
+      path: '/play'
+      fullPath: '/app/play'
+      preLoaderRoute: typeof AppPlayRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/quest': {
       id: '/app/quest'
       path: '/quest'
@@ -358,6 +408,13 @@ declare module '@tanstack/react-router' {
       path: '/safety'
       fullPath: '/app/safety'
       preLoaderRoute: typeof AppSafetyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/together': {
@@ -387,10 +444,13 @@ interface AppRouteChildren {
   AppMindGymRoute: typeof AppMindGymRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppNumiRoute: typeof AppNumiRoute
+  AppPlayRoute: typeof AppPlayRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppQuestRoute: typeof AppQuestRoute
   AppResetRoute: typeof AppResetRoute
   AppRewardsRoute: typeof AppRewardsRoute
   AppSafetyRoute: typeof AppSafetyRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppTogetherRoute: typeof AppTogetherRoute
   AppWellnessRoute: typeof AppWellnessRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -406,10 +466,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppMindGymRoute: AppMindGymRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppNumiRoute: AppNumiRoute,
+  AppPlayRoute: AppPlayRoute,
+  AppProfileRoute: AppProfileRoute,
   AppQuestRoute: AppQuestRoute,
   AppResetRoute: AppResetRoute,
   AppRewardsRoute: AppRewardsRoute,
   AppSafetyRoute: AppSafetyRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppTogetherRoute: AppTogetherRoute,
   AppWellnessRoute: AppWellnessRoute,
   AppIndexRoute: AppIndexRoute,
