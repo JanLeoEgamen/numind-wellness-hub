@@ -10,33 +10,380 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as FaqRouteImport } from './routes/faq'
+import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppFocusRouteImport } from './routes/app.focus'
+import { Route as AppGardenRouteImport } from './routes/app.garden'
+import { Route as AppJournalRouteImport } from './routes/app.journal'
+import { Route as AppJourneyRouteImport } from './routes/app.journey'
+import { Route as AppLearningRouteImport } from './routes/app.learning'
+import { Route as AppMemoryLaneRouteImport } from './routes/app.memory-lane'
+import { Route as AppMindGymRouteImport } from './routes/app.mind-gym'
+import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
+import { Route as AppNumiRouteImport } from './routes/app.numi'
+import { Route as AppPlayRouteImport } from './routes/app.play'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
+import { Route as AppQuestRouteImport } from './routes/app.quest'
+import { Route as AppResetRouteImport } from './routes/app.reset'
+import { Route as AppRewardsRouteImport } from './routes/app.rewards'
+import { Route as AppSafetyRouteImport } from './routes/app.safety'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppTogetherRouteImport } from './routes/app.together'
+import { Route as AppWellnessRouteImport } from './routes/app.wellness'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeaturesRoute = FeaturesRouteImport.update({
+  id: '/features',
+  path: '/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFocusRoute = AppFocusRouteImport.update({
+  id: '/focus',
+  path: '/focus',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGardenRoute = AppGardenRouteImport.update({
+  id: '/garden',
+  path: '/garden',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppJournalRoute = AppJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppJourneyRoute = AppJourneyRouteImport.update({
+  id: '/journey',
+  path: '/journey',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLearningRoute = AppLearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMemoryLaneRoute = AppMemoryLaneRouteImport.update({
+  id: '/memory-lane',
+  path: '/memory-lane',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMindGymRoute = AppMindGymRouteImport.update({
+  id: '/mind-gym',
+  path: '/mind-gym',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNumiRoute = AppNumiRouteImport.update({
+  id: '/numi',
+  path: '/numi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlayRoute = AppPlayRouteImport.update({
+  id: '/play',
+  path: '/play',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQuestRoute = AppQuestRouteImport.update({
+  id: '/quest',
+  path: '/quest',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResetRoute = AppResetRouteImport.update({
+  id: '/reset',
+  path: '/reset',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRewardsRoute = AppRewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSafetyRoute = AppSafetyRouteImport.update({
+  id: '/safety',
+  path: '/safety',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTogetherRoute = AppTogetherRouteImport.update({
+  id: '/together',
+  path: '/together',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWellnessRoute = AppWellnessRouteImport.update({
+  id: '/wellness',
+  path: '/wellness',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/app': typeof AppRouteWithChildren
+  '/faq': typeof FaqRoute
+  '/features': typeof FeaturesRoute
+  '/onboarding': typeof OnboardingRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/app/focus': typeof AppFocusRoute
+  '/app/garden': typeof AppGardenRoute
+  '/app/journal': typeof AppJournalRoute
+  '/app/journey': typeof AppJourneyRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/memory-lane': typeof AppMemoryLaneRoute
+  '/app/mind-gym': typeof AppMindGymRoute
+  '/app/notifications': typeof AppNotificationsRoute
+  '/app/numi': typeof AppNumiRoute
+  '/app/play': typeof AppPlayRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/quest': typeof AppQuestRoute
+  '/app/reset': typeof AppResetRoute
+  '/app/rewards': typeof AppRewardsRoute
+  '/app/safety': typeof AppSafetyRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/together': typeof AppTogetherRoute
+  '/app/wellness': typeof AppWellnessRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/faq': typeof FaqRoute
+  '/features': typeof FeaturesRoute
+  '/onboarding': typeof OnboardingRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/app/focus': typeof AppFocusRoute
+  '/app/garden': typeof AppGardenRoute
+  '/app/journal': typeof AppJournalRoute
+  '/app/journey': typeof AppJourneyRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/memory-lane': typeof AppMemoryLaneRoute
+  '/app/mind-gym': typeof AppMindGymRoute
+  '/app/notifications': typeof AppNotificationsRoute
+  '/app/numi': typeof AppNumiRoute
+  '/app/play': typeof AppPlayRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/quest': typeof AppQuestRoute
+  '/app/reset': typeof AppResetRoute
+  '/app/rewards': typeof AppRewardsRoute
+  '/app/safety': typeof AppSafetyRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/together': typeof AppTogetherRoute
+  '/app/wellness': typeof AppWellnessRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/app': typeof AppRouteWithChildren
+  '/faq': typeof FaqRoute
+  '/features': typeof FeaturesRoute
+  '/onboarding': typeof OnboardingRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/app/focus': typeof AppFocusRoute
+  '/app/garden': typeof AppGardenRoute
+  '/app/journal': typeof AppJournalRoute
+  '/app/journey': typeof AppJourneyRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/memory-lane': typeof AppMemoryLaneRoute
+  '/app/mind-gym': typeof AppMindGymRoute
+  '/app/notifications': typeof AppNotificationsRoute
+  '/app/numi': typeof AppNumiRoute
+  '/app/play': typeof AppPlayRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/quest': typeof AppQuestRoute
+  '/app/reset': typeof AppResetRoute
+  '/app/rewards': typeof AppRewardsRoute
+  '/app/safety': typeof AppSafetyRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/together': typeof AppTogetherRoute
+  '/app/wellness': typeof AppWellnessRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/app'
+    | '/faq'
+    | '/features'
+    | '/onboarding'
+    | '/pricing'
+    | '/privacy'
+    | '/terms'
+    | '/app/focus'
+    | '/app/garden'
+    | '/app/journal'
+    | '/app/journey'
+    | '/app/learning'
+    | '/app/memory-lane'
+    | '/app/mind-gym'
+    | '/app/notifications'
+    | '/app/numi'
+    | '/app/play'
+    | '/app/profile'
+    | '/app/quest'
+    | '/app/reset'
+    | '/app/rewards'
+    | '/app/safety'
+    | '/app/settings'
+    | '/app/together'
+    | '/app/wellness'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/faq'
+    | '/features'
+    | '/onboarding'
+    | '/pricing'
+    | '/privacy'
+    | '/terms'
+    | '/app/focus'
+    | '/app/garden'
+    | '/app/journal'
+    | '/app/journey'
+    | '/app/learning'
+    | '/app/memory-lane'
+    | '/app/mind-gym'
+    | '/app/notifications'
+    | '/app/numi'
+    | '/app/play'
+    | '/app/profile'
+    | '/app/quest'
+    | '/app/reset'
+    | '/app/rewards'
+    | '/app/safety'
+    | '/app/settings'
+    | '/app/together'
+    | '/app/wellness'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/app'
+    | '/faq'
+    | '/features'
+    | '/onboarding'
+    | '/pricing'
+    | '/privacy'
+    | '/terms'
+    | '/app/focus'
+    | '/app/garden'
+    | '/app/journal'
+    | '/app/journey'
+    | '/app/learning'
+    | '/app/memory-lane'
+    | '/app/mind-gym'
+    | '/app/notifications'
+    | '/app/numi'
+    | '/app/play'
+    | '/app/profile'
+    | '/app/quest'
+    | '/app/reset'
+    | '/app/rewards'
+    | '/app/safety'
+    | '/app/settings'
+    | '/app/together'
+    | '/app/wellness'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  AdminRoute: typeof AdminRoute
+  AppRoute: typeof AppRouteWithChildren
+  FaqRoute: typeof FaqRoute
+  FeaturesRoute: typeof FeaturesRoute
+  OnboardingRoute: typeof OnboardingRoute
+  PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +395,262 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/features': {
+      id: '/features'
+      path: '/features'
+      fullPath: '/features'
+      preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/focus': {
+      id: '/app/focus'
+      path: '/focus'
+      fullPath: '/app/focus'
+      preLoaderRoute: typeof AppFocusRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/garden': {
+      id: '/app/garden'
+      path: '/garden'
+      fullPath: '/app/garden'
+      preLoaderRoute: typeof AppGardenRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/journal': {
+      id: '/app/journal'
+      path: '/journal'
+      fullPath: '/app/journal'
+      preLoaderRoute: typeof AppJournalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/journey': {
+      id: '/app/journey'
+      path: '/journey'
+      fullPath: '/app/journey'
+      preLoaderRoute: typeof AppJourneyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/learning': {
+      id: '/app/learning'
+      path: '/learning'
+      fullPath: '/app/learning'
+      preLoaderRoute: typeof AppLearningRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/memory-lane': {
+      id: '/app/memory-lane'
+      path: '/memory-lane'
+      fullPath: '/app/memory-lane'
+      preLoaderRoute: typeof AppMemoryLaneRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/mind-gym': {
+      id: '/app/mind-gym'
+      path: '/mind-gym'
+      fullPath: '/app/mind-gym'
+      preLoaderRoute: typeof AppMindGymRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/notifications': {
+      id: '/app/notifications'
+      path: '/notifications'
+      fullPath: '/app/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/numi': {
+      id: '/app/numi'
+      path: '/numi'
+      fullPath: '/app/numi'
+      preLoaderRoute: typeof AppNumiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/play': {
+      id: '/app/play'
+      path: '/play'
+      fullPath: '/app/play'
+      preLoaderRoute: typeof AppPlayRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/quest': {
+      id: '/app/quest'
+      path: '/quest'
+      fullPath: '/app/quest'
+      preLoaderRoute: typeof AppQuestRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reset': {
+      id: '/app/reset'
+      path: '/reset'
+      fullPath: '/app/reset'
+      preLoaderRoute: typeof AppResetRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/rewards': {
+      id: '/app/rewards'
+      path: '/rewards'
+      fullPath: '/app/rewards'
+      preLoaderRoute: typeof AppRewardsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/safety': {
+      id: '/app/safety'
+      path: '/safety'
+      fullPath: '/app/safety'
+      preLoaderRoute: typeof AppSafetyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/together': {
+      id: '/app/together'
+      path: '/together'
+      fullPath: '/app/together'
+      preLoaderRoute: typeof AppTogetherRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/wellness': {
+      id: '/app/wellness'
+      path: '/wellness'
+      fullPath: '/app/wellness'
+      preLoaderRoute: typeof AppWellnessRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppFocusRoute: typeof AppFocusRoute
+  AppGardenRoute: typeof AppGardenRoute
+  AppJournalRoute: typeof AppJournalRoute
+  AppJourneyRoute: typeof AppJourneyRoute
+  AppLearningRoute: typeof AppLearningRoute
+  AppMemoryLaneRoute: typeof AppMemoryLaneRoute
+  AppMindGymRoute: typeof AppMindGymRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
+  AppNumiRoute: typeof AppNumiRoute
+  AppPlayRoute: typeof AppPlayRoute
+  AppProfileRoute: typeof AppProfileRoute
+  AppQuestRoute: typeof AppQuestRoute
+  AppResetRoute: typeof AppResetRoute
+  AppRewardsRoute: typeof AppRewardsRoute
+  AppSafetyRoute: typeof AppSafetyRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppTogetherRoute: typeof AppTogetherRoute
+  AppWellnessRoute: typeof AppWellnessRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppFocusRoute: AppFocusRoute,
+  AppGardenRoute: AppGardenRoute,
+  AppJournalRoute: AppJournalRoute,
+  AppJourneyRoute: AppJourneyRoute,
+  AppLearningRoute: AppLearningRoute,
+  AppMemoryLaneRoute: AppMemoryLaneRoute,
+  AppMindGymRoute: AppMindGymRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
+  AppNumiRoute: AppNumiRoute,
+  AppPlayRoute: AppPlayRoute,
+  AppProfileRoute: AppProfileRoute,
+  AppQuestRoute: AppQuestRoute,
+  AppResetRoute: AppResetRoute,
+  AppRewardsRoute: AppRewardsRoute,
+  AppSafetyRoute: AppSafetyRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppTogetherRoute: AppTogetherRoute,
+  AppWellnessRoute: AppWellnessRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  AdminRoute: AdminRoute,
+  AppRoute: AppRouteWithChildren,
+  FaqRoute: FaqRoute,
+  FeaturesRoute: FeaturesRoute,
+  OnboardingRoute: OnboardingRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
