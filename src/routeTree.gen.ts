@@ -13,10 +13,19 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppFocusRouteImport } from './routes/app.focus'
+import { Route as AppGardenRouteImport } from './routes/app.garden'
+import { Route as AppJournalRouteImport } from './routes/app.journal'
+import { Route as AppJourneyRouteImport } from './routes/app.journey'
+import { Route as AppLearningRouteImport } from './routes/app.learning'
+import { Route as AppMemoryLaneRouteImport } from './routes/app.memory-lane'
 import { Route as AppMindGymRouteImport } from './routes/app.mind-gym'
+import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppNumiRouteImport } from './routes/app.numi'
 import { Route as AppQuestRouteImport } from './routes/app.quest'
 import { Route as AppResetRouteImport } from './routes/app.reset'
+import { Route as AppRewardsRouteImport } from './routes/app.rewards'
+import { Route as AppSafetyRouteImport } from './routes/app.safety'
+import { Route as AppTogetherRouteImport } from './routes/app.together'
 import { Route as AppWellnessRouteImport } from './routes/app.wellness'
 
 const IndexRoute = IndexRouteImport.update({
@@ -39,9 +48,39 @@ const AppFocusRoute = AppFocusRouteImport.update({
   path: '/focus',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGardenRoute = AppGardenRouteImport.update({
+  id: '/garden',
+  path: '/garden',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppJournalRoute = AppJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppJourneyRoute = AppJourneyRouteImport.update({
+  id: '/journey',
+  path: '/journey',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLearningRoute = AppLearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMemoryLaneRoute = AppMemoryLaneRouteImport.update({
+  id: '/memory-lane',
+  path: '/memory-lane',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMindGymRoute = AppMindGymRouteImport.update({
   id: '/mind-gym',
   path: '/mind-gym',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNumiRoute = AppNumiRouteImport.update({
@@ -59,6 +98,21 @@ const AppResetRoute = AppResetRouteImport.update({
   path: '/reset',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRewardsRoute = AppRewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSafetyRoute = AppSafetyRouteImport.update({
+  id: '/safety',
+  path: '/safety',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTogetherRoute = AppTogetherRouteImport.update({
+  id: '/together',
+  path: '/together',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppWellnessRoute = AppWellnessRouteImport.update({
   id: '/wellness',
   path: '/wellness',
@@ -69,20 +123,38 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/focus': typeof AppFocusRoute
+  '/app/garden': typeof AppGardenRoute
+  '/app/journal': typeof AppJournalRoute
+  '/app/journey': typeof AppJourneyRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/memory-lane': typeof AppMemoryLaneRoute
   '/app/mind-gym': typeof AppMindGymRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/numi': typeof AppNumiRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
+  '/app/rewards': typeof AppRewardsRoute
+  '/app/safety': typeof AppSafetyRoute
+  '/app/together': typeof AppTogetherRoute
   '/app/wellness': typeof AppWellnessRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/focus': typeof AppFocusRoute
+  '/app/garden': typeof AppGardenRoute
+  '/app/journal': typeof AppJournalRoute
+  '/app/journey': typeof AppJourneyRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/memory-lane': typeof AppMemoryLaneRoute
   '/app/mind-gym': typeof AppMindGymRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/numi': typeof AppNumiRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
+  '/app/rewards': typeof AppRewardsRoute
+  '/app/safety': typeof AppSafetyRoute
+  '/app/together': typeof AppTogetherRoute
   '/app/wellness': typeof AppWellnessRoute
   '/app': typeof AppIndexRoute
 }
@@ -91,10 +163,19 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/focus': typeof AppFocusRoute
+  '/app/garden': typeof AppGardenRoute
+  '/app/journal': typeof AppJournalRoute
+  '/app/journey': typeof AppJourneyRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/memory-lane': typeof AppMemoryLaneRoute
   '/app/mind-gym': typeof AppMindGymRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/numi': typeof AppNumiRoute
   '/app/quest': typeof AppQuestRoute
   '/app/reset': typeof AppResetRoute
+  '/app/rewards': typeof AppRewardsRoute
+  '/app/safety': typeof AppSafetyRoute
+  '/app/together': typeof AppTogetherRoute
   '/app/wellness': typeof AppWellnessRoute
   '/app/': typeof AppIndexRoute
 }
@@ -104,20 +185,38 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/app/focus'
+    | '/app/garden'
+    | '/app/journal'
+    | '/app/journey'
+    | '/app/learning'
+    | '/app/memory-lane'
     | '/app/mind-gym'
+    | '/app/notifications'
     | '/app/numi'
     | '/app/quest'
     | '/app/reset'
+    | '/app/rewards'
+    | '/app/safety'
+    | '/app/together'
     | '/app/wellness'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app/focus'
+    | '/app/garden'
+    | '/app/journal'
+    | '/app/journey'
+    | '/app/learning'
+    | '/app/memory-lane'
     | '/app/mind-gym'
+    | '/app/notifications'
     | '/app/numi'
     | '/app/quest'
     | '/app/reset'
+    | '/app/rewards'
+    | '/app/safety'
+    | '/app/together'
     | '/app/wellness'
     | '/app'
   id:
@@ -125,10 +224,19 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/app/focus'
+    | '/app/garden'
+    | '/app/journal'
+    | '/app/journey'
+    | '/app/learning'
+    | '/app/memory-lane'
     | '/app/mind-gym'
+    | '/app/notifications'
     | '/app/numi'
     | '/app/quest'
     | '/app/reset'
+    | '/app/rewards'
+    | '/app/safety'
+    | '/app/together'
     | '/app/wellness'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -168,11 +276,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFocusRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/garden': {
+      id: '/app/garden'
+      path: '/garden'
+      fullPath: '/app/garden'
+      preLoaderRoute: typeof AppGardenRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/journal': {
+      id: '/app/journal'
+      path: '/journal'
+      fullPath: '/app/journal'
+      preLoaderRoute: typeof AppJournalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/journey': {
+      id: '/app/journey'
+      path: '/journey'
+      fullPath: '/app/journey'
+      preLoaderRoute: typeof AppJourneyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/learning': {
+      id: '/app/learning'
+      path: '/learning'
+      fullPath: '/app/learning'
+      preLoaderRoute: typeof AppLearningRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/memory-lane': {
+      id: '/app/memory-lane'
+      path: '/memory-lane'
+      fullPath: '/app/memory-lane'
+      preLoaderRoute: typeof AppMemoryLaneRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/mind-gym': {
       id: '/app/mind-gym'
       path: '/mind-gym'
       fullPath: '/app/mind-gym'
       preLoaderRoute: typeof AppMindGymRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/notifications': {
+      id: '/app/notifications'
+      path: '/notifications'
+      fullPath: '/app/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/numi': {
@@ -196,6 +346,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppResetRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/rewards': {
+      id: '/app/rewards'
+      path: '/rewards'
+      fullPath: '/app/rewards'
+      preLoaderRoute: typeof AppRewardsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/safety': {
+      id: '/app/safety'
+      path: '/safety'
+      fullPath: '/app/safety'
+      preLoaderRoute: typeof AppSafetyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/together': {
+      id: '/app/together'
+      path: '/together'
+      fullPath: '/app/together'
+      preLoaderRoute: typeof AppTogetherRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/wellness': {
       id: '/app/wellness'
       path: '/wellness'
@@ -208,20 +379,38 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppFocusRoute: typeof AppFocusRoute
+  AppGardenRoute: typeof AppGardenRoute
+  AppJournalRoute: typeof AppJournalRoute
+  AppJourneyRoute: typeof AppJourneyRoute
+  AppLearningRoute: typeof AppLearningRoute
+  AppMemoryLaneRoute: typeof AppMemoryLaneRoute
   AppMindGymRoute: typeof AppMindGymRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppNumiRoute: typeof AppNumiRoute
   AppQuestRoute: typeof AppQuestRoute
   AppResetRoute: typeof AppResetRoute
+  AppRewardsRoute: typeof AppRewardsRoute
+  AppSafetyRoute: typeof AppSafetyRoute
+  AppTogetherRoute: typeof AppTogetherRoute
   AppWellnessRoute: typeof AppWellnessRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppFocusRoute: AppFocusRoute,
+  AppGardenRoute: AppGardenRoute,
+  AppJournalRoute: AppJournalRoute,
+  AppJourneyRoute: AppJourneyRoute,
+  AppLearningRoute: AppLearningRoute,
+  AppMemoryLaneRoute: AppMemoryLaneRoute,
   AppMindGymRoute: AppMindGymRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppNumiRoute: AppNumiRoute,
   AppQuestRoute: AppQuestRoute,
   AppResetRoute: AppResetRoute,
+  AppRewardsRoute: AppRewardsRoute,
+  AppSafetyRoute: AppSafetyRoute,
+  AppTogetherRoute: AppTogetherRoute,
   AppWellnessRoute: AppWellnessRoute,
   AppIndexRoute: AppIndexRoute,
 }
