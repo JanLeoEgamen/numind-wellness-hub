@@ -135,7 +135,7 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
   }, [celebrate]);
 
   const value = useMemo<Ctx>(() => {
-    const level = LEVELS[Math.min(state.levelIndex, LEVELS.length - 1)];
+    const level = LEVELS[Math.min(state.levelIndex, LEVELS.length - 1)] ?? LEVELS[0]!;
     const stageIndex = Math.max(
       0,
       GARDEN_STAGES.filter((g) => state.gardenXp >= g.threshold).length - 1,
@@ -146,7 +146,7 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
       levelEmoji: level.emoji,
       xpInLevel: state.xp % XP_PER_LEVEL,
       xpForLevel: XP_PER_LEVEL,
-      gardenStage: GARDEN_STAGES[stageIndex],
+      gardenStage: GARDEN_STAGES[stageIndex] ?? GARDEN_STAGES[0]!,
       gardenNext: GARDEN_STAGES[stageIndex + 1] ?? null,
       totalTasks: TODAYS_JOURNEY.length,
       completeTask,
