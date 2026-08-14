@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -68,6 +69,11 @@ const FaqRoute = FaqRouteImport.update({
 const FeaturesRoute = FeaturesRouteImport.update({
   id: '/features',
   path: '/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/faq': typeof FaqRoute
   '/features': typeof FeaturesRoute
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/faq': typeof FaqRoute
   '/features': typeof FeaturesRoute
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -262,6 +270,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/faq': typeof FaqRoute
   '/features': typeof FeaturesRoute
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/faq'
     | '/features'
+    | '/login'
     | '/onboarding'
     | '/pricing'
     | '/privacy'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/faq'
     | '/features'
+    | '/login'
     | '/onboarding'
     | '/pricing'
     | '/privacy'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/faq'
     | '/features'
+    | '/login'
     | '/onboarding'
     | '/pricing'
     | '/privacy'
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   FaqRoute: typeof FaqRoute
   FeaturesRoute: typeof FeaturesRoute
+  LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -441,6 +454,13 @@ declare module '@tanstack/react-router' {
       path: '/features'
       fullPath: '/features'
       preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -667,6 +687,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   FaqRoute: FaqRoute,
   FeaturesRoute: FeaturesRoute,
+  LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
