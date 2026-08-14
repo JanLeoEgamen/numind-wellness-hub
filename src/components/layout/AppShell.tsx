@@ -5,6 +5,7 @@ import { useNuMind } from "@/lib/numind-store";
 import { USER } from "@/lib/mock-data";
 import { NumiAvatar, StreakBadge, ProgressBar } from "@/components/numind/ui-kit";
 import { CelebrationModal } from "@/components/numind/celebration";
+import { signOut } from "@/hooks/useAuth";
 
 const PRIMARY = [
   { to: "/app", emoji: "🏠", label: "Home" },
