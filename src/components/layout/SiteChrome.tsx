@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { useAuth, signOut } from "@/hooks/useAuth";
 
 const NAV = [
   { to: "/features", label: "Features" },
@@ -25,8 +26,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <Link to="/onboarding" className="focus-ring hidden rounded-full px-4 py-2 text-sm font-semibold hover:bg-muted sm:inline-flex">Explore NuMind</Link>
-            <Link to="/app" className="focus-ring rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy shadow-glow">Open app</Link>
+            <SiteAuthActions />
           </div>
         </div>
       </header>
