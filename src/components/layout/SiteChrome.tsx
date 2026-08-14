@@ -10,6 +10,35 @@ const NAV = [
 ];
 
 export function SiteLayout({ children }: { children: ReactNode }) {
+  return <SiteLayoutInner>{children}</SiteLayoutInner>;
+}
+
+function SiteAuthActions() {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <span className="h-9 w-24" aria-hidden />;
+  if (isAuthenticated) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="focus-ring hidden rounded-full px-4 py-2 text-sm font-semibold hover:bg-muted sm:inline-flex"
+        >
+          Log out
+        </button>
+        <Link to="/app" className="focus-ring rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy shadow-glow">Open app</Link>
+      </>
+    );
+  }
+  return (
+    <>
+      <Link to="/login" className="focus-ring hidden rounded-full px-4 py-2 text-sm font-semibold hover:bg-muted sm:inline-flex">Log in</Link>
+      <Link to="/signup" className="focus-ring rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy shadow-glow">Get started</Link>
+    </>
+  );
+}
+
+function SiteLayoutInner({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
