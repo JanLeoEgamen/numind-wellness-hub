@@ -122,6 +122,15 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
               >
                 <span aria-hidden>{USER.avatar}</span>
               </Link>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                aria-label="Log out"
+                title="Log out"
+                className="focus-ring grid h-9 w-9 place-items-center rounded-full bg-muted hover:bg-accent"
+              >
+                <span aria-hidden>🚪</span>
+              </button>
             </div>
           </header>
 
