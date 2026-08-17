@@ -30,11 +30,19 @@ export type MyStats = {
     onboardingCompleted: boolean;
   } | null;
   xpTotal: number;
-  level: { number: number; name: string; tagline: string | null; emoji: string | null };
+  level: {
+    number: number;
+    name: string;
+    tagline: string | null;
+    emoji: string | null;
+    xpRequired: number;
+    nextLevelXpRequired: number | null;
+  };
   currentStreak: number;
   longestStreak: number;
   garden: { growthPoints: number; stage: number; theme: string } | null;
   todayCompleted: boolean;
+  dailyRewardClaimedToday: boolean;
 };
 
 export const getMyStats = createServerFn({ method: "POST" })
@@ -43,7 +51,7 @@ export const getMyStats = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const today = toDateKey(new Date());
 
-    const [profileRes, xpRes, resetRes, gardenRes, levelsRes] = await Promise.all([
+    const [profileRes, xpRes, resetRes, gardenRes, levelsRes, rewardRes] = await Promise.all([
       supabase
         .from("profiles")
         .select(
@@ -64,6 +72,14 @@ export const getMyStats = createServerFn({ method: "POST" })
         .eq("user_id", userId)
         .maybeSingle(),
       supabase.from("levels").select("level_number, name, tagline, xp_required, emoji").order("xp_required"),
+      supabase
+        .from("xp_transactions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("source_type", "daily_reward")
+        .gte("created_at", `${today}T00:00:00`)
+        .lt("created_at", `${today}T23:59:59`)
+        .limit(1),
     ]);
 
     const profileRows = profileRes.data;
@@ -81,6 +97,7 @@ export const getMyStats = createServerFn({ method: "POST" })
     for (const lvl of levelRows) {
       if (xpTotal >= lvl.xp_required) currentLevel = lvl;
     }
+    const nextLevel = levelRows.find((lvl) => lvl.xp_required > xpTotal) ?? null;
 
     // Streak = consecutive completed Daily Reset days ending today or yesterday.
     const { data: completedDates } = await supabase
@@ -138,6 +155,8 @@ export const getMyStats = createServerFn({ method: "POST" })
         name: currentLevel.name,
         tagline: currentLevel.tagline,
         emoji: currentLevel.emoji,
+        xpRequired: currentLevel.xp_required,
+        nextLevelXpRequired: nextLevel?.xp_required ?? null,
       },
       currentStreak: streak,
       longestStreak: longest,
@@ -149,7 +168,85 @@ export const getMyStats = createServerFn({ method: "POST" })
           }
         : null,
       todayCompleted: resetRes.data?.completed ?? false,
+      dailyRewardClaimedToday: (rewardRes.data?.length ?? 0) > 0,
     };
+  });
+
+// ---------------------------------------------------------------------------
+// 1b. Today's Journey - real completion state per task
+// ---------------------------------------------------------------------------
+
+export type JourneyTaskView = {
+  id: string;
+  emoji: string;
+  title: string;
+  description: string;
+  xp: number;
+  to: string;
+  tone: "teal" | "lavender" | "mint" | "sun" | "coral";
+  done: boolean;
+};
+
+export const getTodaysJourney = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<JourneyTaskView[]> => {
+    const { supabase, userId } = context;
+    const today = toDateKey(new Date());
+    const dayStart = `${today}T00:00:00.000Z`;
+
+    // Each check reads a real table so the home reflects live progress instead
+    // of a static placeholder list.
+    const [resetRes, mindRes, focusRes, hydrationRes, winRes] = await Promise.all([
+      supabase
+        .from("daily_resets")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("date", today)
+        .eq("completed", true)
+        .maybeSingle(),
+      supabase
+        .from("mind_gym_completions")
+        .select("id")
+        .eq("user_id", userId)
+        .gte("completed_at", dayStart)
+        .limit(1),
+      supabase
+        .from("focus_sessions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("status", "completed")
+        .gte("completed_at", dayStart)
+        .limit(1),
+      supabase.from("habit_logs").select("id").eq("user_id", userId).eq("date", today).limit(1),
+      supabase
+        .from("journal_entries")
+        .select("id")
+        .eq("user_id", userId)
+        .gte("created_at", dayStart)
+        .limit(1),
+    ]);
+
+    const mindDone = (mindRes.data?.length ?? 0) > 0;
+    const focusDone = (focusRes.data?.length ?? 0) > 0;
+    const hydrationDone = (hydrationRes.data?.length ?? 0) > 0;
+    const winDone = (winRes.data?.length ?? 0) > 0;
+
+    return [
+      {
+        id: "reset",
+        emoji: "🌞",
+        title: "Daily Reset",
+        description: "Take one minute for yourself.",
+        xp: 20,
+        to: "/app/reset",
+        tone: "sun",
+        done: !!resetRes.data,
+      },
+      { id: "mindgym", emoji: "🧠", title: "Mind Gym", description: "Try a breathing exercise.", xp: 20, to: "/app/mind-gym", tone: "teal", done: mindDone },
+      { id: "focus", emoji: "⚡", title: "Focus Sprint", description: "Get 15 minutes of focus.", xp: 20, to: "/app/focus", tone: "lavender", done: focusDone },
+      { id: "hydration", emoji: "💧", title: "Hydration Quest", description: "Drink a glass of water.", xp: 20, to: "/app/wellness", tone: "mint", done: hydrationDone },
+      { id: "win", emoji: "🌟", title: "Today's Win", description: "Write something you're proud of.", xp: 20, to: "/app/journal", tone: "coral", done: winDone },
+    ];
   });
 
 // ---------------------------------------------------------------------------
@@ -1362,21 +1459,23 @@ export const recordGamePlay = createServerFn({ method: "POST" })
   .validator((d: { game: string; xp?: number }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    // NOTE: `game_plays` is a new table (see migrations/..._add_game_plays.sql);
-    // it isn't in the generated types yet, so the queries are softly typed.
-    const { data: existing } = await (supabase as any)
+    // `game_plays` is tracked per (user, game, played_date) via the
+    // unique index `game_plays_user_game_day_idx` (see
+    // migrations/..._fix_game_plays_daily_unique.sql), so we key the "already
+    // played today" check on played_date — not on played_at.
+    const { data: existing } = await supabase
       .from("game_plays")
       .select("id")
       .eq("user_id", userId)
       .eq("game", data.game)
-      .gte("played_at", toDateKey(new Date()))
+      .eq("played_date", toDateKey(new Date()))
       .maybeSingle();
 
     if (existing) {
       return { awarded: false };
     }
 
-    const { data: created } = await (supabase as any)
+    const { data: created } = await supabase
       .from("game_plays")
       .insert({ user_id: userId, game: data.game, xp_awarded: data.xp ?? 20 })
       .select("id")

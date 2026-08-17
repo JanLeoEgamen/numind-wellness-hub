@@ -833,22 +833,123 @@ function createDefaults(table: CatalogTable): Record<string, unknown> {
   return d;
 }
 
-function FieldInput({ field, value, onChange }: { field: string; value: unknown; onChange: (v: unknown) => void }) {
+type FieldDef = { type: "select" | "radio"; options?: string[] };
+const INPUT_STYLES = "focus-ring w-full rounded-xl border border-border bg-card px-3 py-2 text-sm";
+const EMOJI_LIST = [
+  "🌱", "🌿", "🌷", "🌸", "🌼", "🌻", "🌳", "🌵", "🍄", "🌺", "🌹", "🌾",
+  "🐝", "🦋", "🐦", "🐠", "🐢", "🐞", "🐣", "🦉",
+  "💧", "☀️", "🌙", "⭐", "✨", "🔥", "⚡", "🌈", "☁️", "🍃",
+  "🎯", "🧠", "💪", "🙏", "😌", "😊", "🌟", "🏆", "🎖️", "🎁", "🎉", "🎊",
+  "🧘", "📖", "🎨", "🎵", "🚀", "🏡", "🪴", "💛", "💚", "💙", "💜", "🤍", "💖",
+];
+
+function getFieldDef(table: CatalogTable, field: string): FieldDef | undefined {
+  if (field === "emoji") return { type: "select", options: EMOJI_LIST };
+  switch (field) {
+    case "quest_type": return { type: "select", options: ["daily", "weekly", "monthly", "seasonal"] };
+    case "difficulty": return { type: "select", options: ["easy", "medium", "hard"] };
+    case "content_type": return { type: "select", options: ["article", "lesson", "video", "tip", "quiz", "challenge"] };
+    case "reward_type": return { type: "select", options: ["garden_decoration", "numi_accessory", "theme", "avatar_accessory", "badge_frame", "sticker", "seasonal"] };
+    case "item_type": return { type: "select", options: ["flower", "tree", "butterfly", "bird", "bench", "fountain", "path", "decoration", "seasonal"] };
+    case "currency": return { type: "select", options: ["USD", "EUR", "GBP", "PHP", "AUD", "CAD"] };
+    case "tone": return { type: "select", options: ["gentle", "calm", "encouraging", "upbeat", "playful"] };
+    case "country_code": return { type: "select", options: ["GLOBAL", "US", "GB", "AU", "CA", "PH", "IE", "NZ"] };
+    case "active":
+    case "enabled":
+    case "premium_required":
+    case "popular":
+    case "anonymous":
+      return { type: "radio", options: ["true", "false"] };
+  }
+  if (field === "category") {
+    switch (table) {
+      case "mind_gym_activities": return { type: "select", options: ["breathe", "mindfulness", "focus", "gratitude", "motivation"] };
+      case "games": return { type: "select", options: ["memory", "breathe", "words", "sort"] };
+      case "badges": return { type: "select", options: ["milestone", "streak", "mind_gym", "focus", "journal", "wellness", "learning", "quest", "community"] };
+      case "numi_prompts": return { type: "select", options: ["reflection", "grounding", "encouragement", "celebration", "challenge"] };
+      case "quizzes": return { type: "select", options: ["learning", "lightning", "wellbeing"] };
+      case "learning_content": return { type: "select", options: ["mind", "body", "sleep", "focus", "stress", "habits", "growth"] };
+    }
+  }
+  return undefined;
+}
+
+function EmojiPicker({ value, onChange }: { value: string; onChange: (v: unknown) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border bg-card text-xl">{value || "➕"}</span>
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Emoji" className={INPUT_STYLES} />
+        <button type="button" onClick={() => setOpen((o) => !o)} className="focus-ring shrink-0 rounded-full bg-muted px-3 py-2 text-xs font-semibold">
+          {open ? "Close" : "Pick"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-2 grid grid-cols-8 gap-1 rounded-xl border border-border bg-card p-2 sm:grid-cols-10">
+          {EMOJI_LIST.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => { onChange(e); setOpen(false); }}
+              className={cn("focus-ring grid h-8 w-8 place-items-center rounded-lg text-lg hover:bg-muted", value === e && "bg-mint/50")}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FieldInput({ table, field, value, onChange }: { table: CatalogTable; field: string; value: unknown; onChange: (v: unknown) => void }) {
+  const def = getFieldDef(table, field);
+  if (def?.type === "select") {
+    if (field === "emoji") return <EmojiPicker value={String(value ?? "")} onChange={onChange} />;
+    return (
+      <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={INPUT_STYLES}>
+        {def.options!.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}
+      </select>
+    );
+  }
+  if (def?.type === "radio") {
+    const current = typeof value === "boolean" ? String(value) : String(value ?? "false");
+    return (
+      <div className="flex gap-4">
+        {["true", "false"].map((opt) => (
+          <label key={opt} className="flex cursor-pointer items-center gap-2 text-sm">
+            <input type="radio" name={`f-${field}`} checked={current === opt} onChange={() => onChange(typeof value === "boolean" ? opt === "true" : opt)} className="focus-ring" />
+            {opt === "true" ? "Yes" : "No"}
+          </label>
+        ))}
+      </div>
+    );
+  }
   const t = typeof value;
   if (t === "boolean") {
-    return <input type="checkbox" checked={value as boolean} onChange={(e) => onChange(e.target.checked)} className="focus-ring size-5" />;
+    return (
+      <div className="flex gap-4">
+        {[true, false].map((b) => (
+          <label key={String(b)} className="flex cursor-pointer items-center gap-2 text-sm">
+            <input type="radio" name={`f-${field}`} checked={value === b} onChange={() => onChange(b)} className="focus-ring" />
+            {b ? "Yes" : "No"}
+          </label>
+        ))}
+      </div>
+    );
   }
   if (t === "number") {
-    return <input type="number" value={String(value ?? "")} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} className="focus-ring rounded-xl border border-border bg-card px-3 py-2 text-sm" />;
+    return <input type="number" value={String(value ?? "")} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} className={INPUT_STYLES} />;
   }
   if (t === "object" && value !== null) {
     return <textarea rows={3} value={JSON.stringify(value)} onChange={(e) => { const raw = e.target.value; try { onChange(JSON.parse(raw)); } catch { onChange(raw); } }} className="focus-ring w-full rounded-xl border border-border bg-card px-3 py-2 font-mono text-xs" />;
   }
   const isLong = /description|summary|body|content$|text$|message/.test(field) || String(value ?? "").length > 60;
   if (isLong) {
-    return <textarea rows={3} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className="focus-ring rounded-xl border border-border bg-card px-3 py-2 text-sm" />;
+    return <textarea rows={3} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={INPUT_STYLES} />;
   }
-  return <input value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className="focus-ring w-full rounded-xl border border-border bg-card px-3 py-2 text-sm" />;
+  return <input value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={INPUT_STYLES} />;
 }
 
 function CatalogPanel({ label, table }: { label: string; table: CatalogTable }) {
@@ -904,7 +1005,7 @@ function CatalogPanel({ label, table }: { label: string; table: CatalogTable }) 
             {Object.entries(editing.values).map(([key, value]) => (
               <label key={key} className="grid gap-1 text-xs">
                 <span className="font-semibold capitalize text-muted-foreground">{key.replace(/_/g, " ")}</span>
-                <FieldInput field={key} value={value} onChange={(v) => setField(key, v)} />
+                <FieldInput table={table} field={key} value={value} onChange={(v) => setField(key, v)} />
               </label>
             ))}
           </div>

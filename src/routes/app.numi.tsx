@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { USER } from "@/lib/mock-data";
 import { useMyStats } from "@/lib/server-data";
+import { numiChat, getNumiConversation, clearNumiConversation } from "@/lib/numi-functions";
 import { NumiAvatar, PageHeader, DisclaimerNote } from "@/components/numind/ui-kit";
 import { cn } from "@/lib/utils";
 
@@ -25,104 +26,107 @@ export const Route = createFileRoute("/app/numi")({
 });
 
 const QUICK = [
-  {
-    emoji: "😊",
-    label: "Motivate Me",
-    reply:
-      "You've shown up 12 days in a row. That's not luck — that's you choosing yourself, repeatedly. One small thing today is plenty.",
-  },
-  {
-    emoji: "🧘",
-    label: "Help Me Relax",
-    reply:
-      "Let's do 60 seconds of breathing together. In for 4, hold for 4, out for 6. I'll be right here when you're done. 🌬",
-  },
-  {
-    emoji: "⚡",
-    label: "Help Me Focus",
-    reply:
-      "Try a 15-minute Focus Sprint. Pick one task, silence the rest, and I'll keep the timer. Want me to start it?",
-  },
-  {
-    emoji: "🎯",
-    label: "Help Me Set a Goal",
-    reply:
-      'Let\'s make it small and specific: "Walk 15 minutes after lunch, 4 days this week." Want me to add it to your Quest?',
-  },
-  {
-    emoji: "📅",
-    label: "Plan My Day",
-    reply:
-      "Top 3 for today: 1) Daily Reset 2) One focus sprint on the report 3) A short walk outside. Everything else is a bonus.",
-  },
-  {
-    emoji: "💭",
-    label: "Journal With Me",
-    reply: "Here's a prompt: what's one thing that went better than you expected this week?",
-  },
-  {
-    emoji: "🌟",
-    label: "Celebrate My Progress",
-    reply:
-      "This month: 31 Mind Gym sessions, 19 journal entries and a garden that went from Flower to Tree. Look at that. 🌳",
-  },
-  {
-    emoji: "🌙",
-    label: "Help Me Wind Down",
-    reply:
-      "Screens down, lights low, and the Evening Wind Down in Mind Gym. Six minutes and your brain gets the hint.",
-  },
+  { emoji: "😊", label: "Motivate Me" },
+  { emoji: "🧘", label: "Help Me Relax" },
+  { emoji: "⚡", label: "Help Me Focus" },
+  { emoji: "🎯", label: "Help Me Set a Goal" },
+  { emoji: "📅", label: "Plan My Day" },
+  { emoji: "💭", label: "Journal With Me" },
+  { emoji: "🌟", label: "Celebrate My Progress" },
+  { emoji: "🌙", label: "Help Me Wind Down" },
 ];
 
-type Msg = { id: number; from: "numi" | "user"; text: string };
+type Msg = { id: string; from: "numi" | "user"; text: string };
 
 function NumiPage() {
   const stats = useMyStats();
   const name = stats.data?.profile?.firstName ?? USER.name;
-  const [messages, setMessages] = useState<Msg[]>([
-    { id: 1, from: "numi", text: `Hi ${name}! What can I help you with today?` },
-  ]);
+  const nameRef = useRef(name);
+  nameRef.current = name;
+
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [offline, setOffline] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  function send(text: string, reply?: string) {
-    if (!text.trim()) return;
-    setMessages((m) => [...m, { id: Date.now(), from: "user", text }]);
+  // Hydrate the saved conversation once on mount so a refresh keeps the chat.
+  useEffect(() => {
+    let cancelled = false;
+    getNumiConversation()
+      .then((conv) => {
+        if (cancelled) return;
+        setConversationId(conv.conversationId);
+        setMessages(
+          conv.messages.length > 0
+            ? conv.messages.map((m) => ({
+                id: m.id,
+                from: m.role === "user" ? "user" : "numi",
+                text: m.content,
+              }))
+            : [{ id: "greeting", from: "numi", text: `Hi ${nameRef.current}! What can I help you with today?` }],
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMessages([{ id: "greeting", from: "numi", text: `Hi ${nameRef.current}! What can I help you with today?` }]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function send(text: string) {
+    const value = text.trim();
+    if (!value || typing) return;
+    setMessages((m) => [...m, { id: `u-${Date.now()}`, from: "user", text: value }]);
     setInput("");
     setTyping(true);
-    window.setTimeout(() => {
-      setTyping(false);
-      setMessages((m) => [
-        ...m,
-        {
-          id: Date.now() + 1,
-          from: "numi",
-          text:
-            reply ??
-            "I hear you. Let's keep it small: pick one thing from Today's Journey and I'll cheer you on. 🌱",
-        },
-      ]);
-    }, 900);
+    numiChat({
+      data: { message: value, ...(conversationId ? { conversationId } : {}) },
+    })
+      .then((res) => {
+        setConversationId(res.conversationId);
+        setOffline(res.fallback);
+        setMessages((m) => [...m, { id: `n-${Date.now()}`, from: "numi", text: res.assistant }]);
+      })
+      .catch((err) => {
+        console.error("[Numi] chat failed:", err);
+        setMessages((m) => [
+          ...m,
+          { id: `n-${Date.now()}`, from: "numi", text: "Hmm, I couldn't reach my words just now. Try again in a moment? 💚" },
+        ]);
+      })
+      .finally(() => setTyping(false));
+  }
+
+  function clearChat() {
+    if (conversationId) {
+      clearNumiConversation({ data: { conversationId } }).catch(() => {});
+    }
+    setConversationId(null);
+    setOffline(false);
+    setMessages([{ id: "greeting", from: "numi", text: `Fresh start, ${nameRef.current}. What's on your mind?` }]);
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <PageHeader
         emoji="🤖"
-        title="Meet Numi"
-        subtitle="Your AI wellness companion — here to motivate, support, organize and celebrate."
+        title="Numi"
+        subtitle="Your AI wellness companion — here to motivate, focus and celebrate with you."
         action={
           <button
-            onClick={() =>
-              setMessages([
-                { id: 1, from: "numi", text: `Fresh start, ${name}. What's on your mind?` },
-              ])
-            }
+            onClick={clearChat}
             className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-accent"
           >
             Clear conversation
@@ -131,6 +135,18 @@ function NumiPage() {
       />
 
       <div className="card-soft flex min-h-[52vh] flex-col p-4 sm:p-6">
+        <div className="mb-3 flex items-center gap-2 text-xs">
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 font-semibold",
+              offline ? "bg-muted text-muted-foreground" : "bg-mint/40",
+            )}
+          >
+            {offline ? "Offline mode" : "Live AI"}
+          </span>
+          {loading && <span className="text-muted-foreground">Loading conversation…</span>}
+        </div>
+
         <ul className="flex-1 space-y-4">
           {messages.map((m) => (
             <li key={m.id} className={cn("flex gap-3", m.from === "user" && "flex-row-reverse")}>
@@ -178,7 +194,7 @@ function NumiPage() {
           {QUICK.map((q) => (
             <button
               key={q.label}
-              onClick={() => send(q.label, q.reply)}
+              onClick={() => send(q.label)}
               className="focus-ring shrink-0 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-medium hover:bg-accent"
             >
               <span aria-hidden>{q.emoji}</span> {q.label}
@@ -203,7 +219,10 @@ function NumiPage() {
             placeholder="Tell Numi how today is going…"
             className="focus-ring flex-1 rounded-full border border-border bg-background px-4 py-3 text-sm"
           />
-          <button className="focus-ring rounded-full bg-brand px-5 py-3 text-sm font-bold text-navy">
+          <button
+            className="focus-ring rounded-full bg-brand px-5 py-3 text-sm font-bold text-navy disabled:opacity-50"
+            disabled={typing}
+          >
             Send
           </button>
         </form>
@@ -211,10 +230,12 @@ function NumiPage() {
 
       <div className="mt-4">
         <DisclaimerNote>
-          Numi is an AI wellness companion, not a healthcare professional. Numi does not provide
-          medical advice, diagnosis or treatment. This is a demo experience with mock conversations.
+          Numi is an AI wellness companion, not a healthcare professional. Numi does not provide medical advice,
+          diagnosis or treatment. AI replies are generated and may be imperfect — for urgent support, use the Safety
+          Center.
         </DisclaimerNote>
       </div>
     </div>
   );
 }
+

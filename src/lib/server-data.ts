@@ -15,6 +15,7 @@ import {
   getLearningCatalog,
   getMyQuests,
   getMyMemories,
+  getTodaysJourney,
 } from "@/lib/server-functions";
 
 // Server functions return UUID primary keys; mock-data uses short slug ids.
@@ -64,4 +65,17 @@ export function useMyQuests() {
 
 export function useMyMemories() {
   return useQuery({ queryKey: ["myMemories"], queryFn: () => getMyMemories() });
+}
+
+// Today's Journey pulls the live completion state from the backend so the
+// home reflects real progress. `refetchOnMount: "always"` + window focus
+// keep it fresh whenever the user returns to the dashboard.
+export function useTodaysJourney() {
+  return useQuery({
+    queryKey: ["todaysJourney"],
+    queryFn: () => getTodaysJourney(),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
 }

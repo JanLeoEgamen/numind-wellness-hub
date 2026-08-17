@@ -1,7 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNuMind } from "@/lib/numind-store";
-import { TODAYS_JOURNEY, USER, MEMORIES } from "@/lib/mock-data";
-import { useMyStats } from "@/lib/server-data";
+import { LEVELS, GARDEN_STAGES } from "@/lib/mock-data";
+import {
+  useMyStats,
+  useMyMemories,
+  useMyGarden,
+  useTodaysJourney,
+} from "@/lib/server-data";
 import {
   ProgressRing,
   ProgressBar,
@@ -27,29 +33,50 @@ export const Route = createFileRoute("/app/")({
 });
 
 function Home() {
-  const profile = useMyStats().data?.profile;
-  const firstName =
-    profile?.nickname ?? profile?.firstName ?? profile?.lastName ?? USER.name;
-  const {
-    completed,
-    totalTasks,
-    isComplete,
-    completeTask,
-    streak,
-    xp,
-    xpInLevel,
-    xpForLevel,
-    levelName,
-    levelEmoji,
-    levelIndex,
-    gardenStage,
-    gardenNext,
-    gardenXp,
-    claimedReward,
-    claimDailyReward,
-  } = useNuMind();
+  const queryClient = useQueryClient();
+  const { data: stats } = useMyStats();
+  const { data: journey } = useTodaysJourney();
+  const { data: memories } = useMyMemories();
+  const { data: garden } = useMyGarden();
+  const { claimDailyReward } = useNuMind();
 
-  const done = TODAYS_JOURNEY.filter((t) => isComplete(t.id)).length;
+  const profile = stats?.profile;
+  // Real name, no fake fallback — greet warmly without inventing a user.
+  const firstName =
+    profile?.nickname || profile?.firstName || profile?.lastName || "";
+
+  const tasks = journey ?? [];
+  const done = tasks.filter((t) => t.done).length;
+  const totalTasks = tasks.length;
+
+  const xp = stats?.xpTotal ?? 0;
+  const streak = stats?.currentStreak ?? 0;
+  const levelNumber = Math.max(1, stats?.level.number ?? 1);
+  const levelName = stats?.level.name ?? "Explorer";
+  const levelEmoji = stats?.level.emoji ?? LEVELS[Math.min(levelNumber - 1, LEVELS.length - 1)]?.emoji ?? "🌱";
+  const xpRequired = stats?.level.xpRequired ?? 0;
+  const nextLevelXp = stats?.level.nextLevelXpRequired ?? xpRequired + 2000;
+  const xpInLevel = Math.max(0, xp - xpRequired);
+  const xpForLevel = Math.max(1, nextLevelXp - xpRequired);
+
+  const gardenData = stats?.garden;
+  const gardenXp = gardenData?.growthPoints ?? 0;
+  const gardenStageIndex = Math.max(
+    0,
+    GARDEN_STAGES.filter((g) => gardenXp >= g.threshold).length - 1,
+  );
+  const gardenStage = (GARDEN_STAGES[gardenStageIndex] ?? GARDEN_STAGES[0])!;
+  const gardenNext = GARDEN_STAGES[gardenStageIndex + 1] ?? null;
+
+  const claimedReward = stats?.dailyRewardClaimedToday ?? false;
+  const latestMemory = memories?.[0];
+  const gardenName = garden?.garden?.name || gardenData?.theme;
+
+  const handleClaim = () => {
+    claimDailyReward();
+    // The claim is persisted server-side; refresh so the UI reflects it.
+    queryClient.invalidateQueries({ queryKey: ["myStats"] });
+  };
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -57,7 +84,8 @@ function Home() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">
-              <span aria-hidden>🌞</span> Good morning, {firstName}!
+              <span aria-hidden>🌞</span> Good{" "}
+              {firstName ? `${firstName}!` : "morning!"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Small steps count. You have {totalTasks - done} things waiting whenever you're ready.
@@ -68,7 +96,7 @@ function Home() {
                 <span aria-hidden>⭐</span> {xp.toLocaleString()} XP
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground">
-                <span aria-hidden>{levelEmoji}</span> Level {levelIndex + 1} — {levelName}
+                <span aria-hidden>{levelEmoji}</span> Level {levelNumber} — {levelName}
               </span>
             </div>
           </div>
@@ -100,11 +128,11 @@ function Home() {
             <h2 id="journey" className="text-lg font-bold sm:text-xl">
               Today's Journey
             </h2>
-            <span className="text-xs text-muted-foreground">{completed.length} completed today</span>
+            <span className="text-xs text-muted-foreground">{done} completed today</span>
           </div>
           <ul className="grid gap-3">
-            {TODAYS_JOURNEY.map((t) => {
-              const done = isComplete(t.id);
+            {tasks.map((t) => {
+              const isDone = t.done;
               return (
                 <li key={t.id}>
                   <div className="card-soft hover-lift flex items-center gap-4 p-4">
@@ -112,7 +140,7 @@ function Home() {
                     <div className="min-w-0 flex-1">
                       <p className="flex flex-wrap items-center gap-2 font-semibold">
                         {t.title}
-                        {done ? (
+                        {isDone ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-mint/40 px-2 py-0.5 text-[11px] font-semibold">
                             ✓ Complete
                           </span>
@@ -122,18 +150,12 @@ function Home() {
                       </p>
                       <p className="truncate text-sm text-muted-foreground">{t.description}</p>
                     </div>
-                    {done ? (
-                      <Link to={t.to} className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold">
-                        View
-                      </Link>
-                    ) : (
-                      <button
-                        onClick={() => completeTask(t.id)}
-                        className="focus-ring rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy transition hover:brightness-105"
-                      >
-                        Start
-                      </button>
-                    )}
+                    <Link
+                      to={t.to}
+                      className={`focus-ring rounded-full px-4 py-2 text-sm transition hover:brightness-105 ${isDone ? "bg-muted font-semibold" : "bg-brand font-bold text-navy"}`}
+                    >
+                      {isDone ? "View" : "Start"}
+                    </Link>
                   </div>
                 </li>
               );
@@ -150,7 +172,7 @@ function Home() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{gardenStage.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Recently unlocked: Butterfly Flock 🦋
+                    {gardenName ? `Currently: ${gardenName}` : "Your garden grows as you grow."}
                   </p>
                   {gardenNext ? (
                     <>
@@ -189,7 +211,7 @@ function Home() {
               </div>
               <button
                 disabled={claimedReward}
-                onClick={claimDailyReward}
+                onClick={handleClaim}
                 className="focus-ring mt-4 w-full rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-navy disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
               >
                 {claimedReward ? "Claimed today ✓" : "Claim +50 XP"}
@@ -210,12 +232,9 @@ function Home() {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => completeTask("reset")}
-                className="focus-ring flex-1 rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy"
-              >
+              <CTALink to="/app/reset" className="focus-ring flex-1 rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy">
                 Let's Go
-              </button>
+              </CTALink>
               <CTALink to="/app/numi" variant="ghost" className="flex-1">
                 Talk to Numi
               </CTALink>
@@ -228,7 +247,9 @@ function Home() {
           <SoftCard>
             <SectionTitle>🌸 Memory Lane</SectionTitle>
             <p className="text-sm font-semibold">Look how far you've come!</p>
-            <p className="mt-1 text-sm text-muted-foreground">{MEMORIES[0]?.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {latestMemory ? `${latestMemory.emoji} ${latestMemory.title}` : "Your memories will appear here as you grow."}
+            </p>
             <CTALink to="/app/memory-lane" variant="soft" className="mt-4 w-full">
               View Journey
             </CTALink>
