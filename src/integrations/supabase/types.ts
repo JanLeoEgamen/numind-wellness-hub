@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -297,6 +297,39 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          key: string
+          label: string
+          rollout_pct: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          key: string
+          label: string
+          rollout_pct?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          key?: string
+          label?: string
+          rollout_pct?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       focus_sessions: {
         Row: {
           completed_at: string | null
@@ -330,6 +363,87 @@ export type Database = {
           task?: string | null
           user_id?: string
           xp_awarded?: number
+        }
+        Relationships: []
+      }
+      game_plays: {
+        Row: {
+          created_at: string
+          game: string
+          id: string
+          played_at: string
+          played_count: number
+          played_date: string
+          user_id: string
+          xp_awarded: number
+        }
+        Insert: {
+          created_at?: string
+          game: string
+          id?: string
+          played_at?: string
+          played_count?: number
+          played_date?: string
+          user_id: string
+          xp_awarded?: number
+        }
+        Update: {
+          created_at?: string
+          game?: string
+          id?: string
+          played_at?: string
+          played_count?: number
+          played_date?: string
+          user_id?: string
+          xp_awarded?: number
+        }
+        Relationships: []
+      }
+      games: {
+        Row: {
+          active: boolean
+          category: string | null
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          instructions: Json
+          name: string
+          premium_required: boolean
+          preview_url: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          instructions?: Json
+          name: string
+          premium_required?: boolean
+          preview_url?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          instructions?: Json
+          name?: string
+          premium_required?: boolean
+          preview_url?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -864,6 +978,39 @@ export type Database = {
         }
         Relationships: []
       }
+      numi_prompts: {
+        Row: {
+          active: boolean
+          category: string | null
+          created_at: string
+          id: string
+          slug: string
+          text: string
+          tone: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          id?: string
+          slug: string
+          text: string
+          tone?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          id?: string
+          slug?: string
+          text?: string
+          tone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar: string | null
@@ -1004,6 +1151,48 @@ export type Database = {
         }
         Relationships: []
       }
+      quizzes: {
+        Row: {
+          active: boolean
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          premium_required: boolean
+          questions: Json
+          slug: string
+          title: string
+          updated_at: string
+          xp_reward: number
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          premium_required?: boolean
+          questions?: Json
+          slug: string
+          title: string
+          updated_at?: string
+          xp_reward?: number
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          premium_required?: boolean
+          questions?: Json
+          slug?: string
+          title?: string
+          updated_at?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
       rewards: {
         Row: {
           active: boolean
@@ -1094,6 +1283,45 @@ export type Database = {
           sms?: string | null
           updated_at?: string
           url?: string | null
+        }
+        Relationships: []
+      }
+      seasonal_events: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          emoji: string | null
+          ends_at: string | null
+          id: string
+          name: string
+          slug: string
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          ends_at?: string | null
+          id?: string
+          name: string
+          slug: string
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          ends_at?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          starts_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1194,6 +1422,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      themes: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          name: string
+          palette: Json
+          premium_required: boolean
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          name: string
+          palette?: Json
+          premium_required?: boolean
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          name?: string
+          palette?: Json
+          premium_required?: boolean
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_badges: {
         Row: {
@@ -1333,6 +1603,7 @@ export type Database = {
           active: boolean
           created_at: string
           emoji: string | null
+          favorite: boolean
           habit_type: string
           id: string
           target_value: number
@@ -1345,6 +1616,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           emoji?: string | null
+          favorite?: boolean
           habit_type: string
           id?: string
           target_value?: number
@@ -1357,6 +1629,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           emoji?: string | null
+          favorite?: boolean
           habit_type?: string
           id?: string
           target_value?: number
@@ -1402,6 +1675,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_analytics_overview: { Args: never; Returns: Json }
+      admin_broadcast_notification: {
+        Args: {
+          p_action_id?: string
+          p_action_type?: string
+          p_emoji?: string
+          p_message?: string
+          p_title: string
+          p_type?: string
+          p_user_id?: string
+        }
+        Returns: number
+      }
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          roles: string[]
+          user_id: string
+        }[]
+      }
+      admin_remove_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_user_detail: { Args: { p_user_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1409,6 +1719,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
@@ -1543,3 +1854,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -9,6 +9,12 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { GARDEN_STAGES, LEVELS, TODAYS_JOURNEY } from "./mock-data";
+import {
+  getMyStats,
+  getMyJournalStreak,
+  getMyJournalEntryCount,
+  claimDailyReward as serverClaimDailyReward,
+} from "./server-functions";
 
 export type Celebration = {
   emoji: string;
@@ -29,6 +35,8 @@ type State = {
   theme: "light" | "dark" | "system";
   fontScale: number;
   celebration: Celebration | null;
+  journalStreak: { currentStreak: number; longestStreak: number };
+  journalEntryCount: number;
 };
 
 type Ctx = State & {
@@ -65,13 +73,14 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
     theme: "light",
     fontScale: 100,
     celebration: null,
+    journalStreak: { currentStreak: 0, longestStreak: 0 },
+    journalEntryCount: 0,
   });
 
   useEffect(() => {
     const root = document.documentElement;
     const prefersDark =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
     const dark = state.theme === "dark" || (state.theme === "system" && prefersDark);
     root.classList.toggle("dark", !!dark);
   }, [state.theme]);
@@ -79,6 +88,58 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.style.fontSize = `${state.fontScale}%`;
   }, [state.fontScale]);
+
+  // Hydrate the mock store from real backend stats (XP, level, streaks,
+  // garden) once on mount. Ignored when not signed in / offline. Server totals
+  // are the source of truth here — the warm mock defaults are only a placeholder
+  // and must NOT mask real (smaller) persisted XP after a refresh.
+  useEffect(() => {
+    let cancelled = false;
+    getMyStats()
+      .then((stats) => {
+        if (cancelled) return;
+        setState((s) => ({
+          ...s,
+          xp: stats.xpTotal,
+          levelIndex: Math.max(0, stats.level.number - 1),
+          streak: stats.currentStreak,
+          longestStreak: stats.longestStreak,
+          gardenXp: stats.garden ? stats.garden.growthPoints : s.gardenXp,
+          completed: stats.todayCompleted
+            ? s.completed.includes("reset")
+              ? s.completed
+              : [...s.completed, "reset"]
+            : s.completed,
+        }));
+      })
+      .catch(() => {
+        // Not authenticated or offline — keep the warm mock defaults.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Hydrate journal streak + entry count from the backend once on mount,
+  // reusing the same guarded hydration pattern as getMyStats above.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getMyJournalStreak(), getMyJournalEntryCount()])
+      .then(([streak, count]) => {
+        if (cancelled) return;
+        setState((s) => ({
+          ...s,
+          journalStreak: { currentStreak: streak.currentStreak, longestStreak: streak.longestStreak },
+          journalEntryCount: count.totalEntries,
+        }));
+      })
+      .catch(() => {
+        // Not authenticated or offline — keep the warm mock defaults.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const celebrate = useCallback((c: Celebration) => {
     setState((s) => ({ ...s, celebration: c }));
@@ -89,41 +150,46 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
     toast.success(`+${xp} XP`, { description: label });
   }, []);
 
-  const completeTask = useCallback<Ctx["completeTask"]>((id, opts = {}) => {
-    const task = TODAYS_JOURNEY.find((t) => t.id === id);
-    const xp = opts.xp ?? task?.xp ?? 20;
-    const title = opts.title ?? task?.title ?? "Activity complete";
-    let already = false;
-    setState((s) => {
-      already = s.completed.includes(id);
-      if (already) return s;
-      return {
-        ...s,
-        completed: [...s.completed, id],
-        xp: s.xp + xp,
-        gardenXp: s.gardenXp + Math.round(xp / 2),
-      };
-    });
-    if (already) return;
-    toast.success(`+${xp} XP`, { description: `${title} complete 🎉` });
-    celebrate({
-      emoji: "🎉",
-      title: `${title} complete!`,
-      message: "You showed up for yourself today.",
-      xp,
-      chain: opts.chain ?? [
-        `+${xp} XP earned`,
-        "Today's Journey updated",
-        "Quest progress updated",
-        "Garden growth updated",
-        "Badge progress updated",
-        "Numi is celebrating 🤖",
-      ],
-    });
-  }, [celebrate]);
+  const completeTask = useCallback<Ctx["completeTask"]>(
+    (id, opts = {}) => {
+      const task = TODAYS_JOURNEY.find((t) => t.id === id);
+      const xp = opts.xp ?? task?.xp ?? 20;
+      const title = opts.title ?? task?.title ?? "Activity complete";
+      let already = false;
+      setState((s) => {
+        already = s.completed.includes(id);
+        if (already) return s;
+        return {
+          ...s,
+          completed: [...s.completed, id],
+          xp: s.xp + xp,
+          gardenXp: s.gardenXp + Math.round(xp / 2),
+        };
+      });
+      if (already) return;
+      toast.success(`+${xp} XP`, { description: `${title} complete 🎉` });
+      celebrate({
+        emoji: "🎉",
+        title: `${title} complete!`,
+        message: "You showed up for yourself today.",
+        xp,
+        chain: opts.chain ?? [
+          `+${xp} XP earned`,
+          "Today's Journey updated",
+          "Quest progress updated",
+          "Garden growth updated",
+          "Badge progress updated",
+          "Numi is celebrating 🤖",
+        ],
+      });
+    },
+    [celebrate],
+  );
 
   const claimDailyReward = useCallback(() => {
     setState((s) => (s.claimedReward ? s : { ...s, claimedReward: true, xp: s.xp + 50 }));
+    // Persist the reward server-side (idempotent, once per day).
+    serverClaimDailyReward().catch(() => {});
     toast.success("+50 XP", { description: "Daily reward claimed 🎁" });
     celebrate({
       emoji: "🎁",

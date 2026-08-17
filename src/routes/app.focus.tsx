@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNuMind } from "@/lib/numind-store";
+import { recordFocusSession } from "@/lib/server-functions";
+import { breakdownTask } from "@/lib/task-breakdown";
 import { PageHeader, SoftCard, ProgressRing, SectionTitle, EmptyState } from "@/components/numind/ui-kit";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +30,10 @@ function FocusPage() {
   const [tasks, setTasks] = useState<string[]>([]);
   const [breakdownInput, setBreakdownInput] = useState("Clean my apartment");
   const [steps, setSteps] = useState<string[]>([]);
+  // Guards the finish effect so a completed session is recorded exactly once.
+  const finishedRef = useRef(false);
 
+  // Tick the countdown once per second while running.
   useEffect(() => {
     if (!running) return;
     const t = window.setInterval(() => {
@@ -36,14 +41,45 @@ function FocusPage() {
         if (l <= 1) {
           window.clearInterval(t);
           setRunning(false);
-          completeTask("focus", { title: "Focus Sprint", xp: 20 });
           return 0;
         }
         return l - 1;
       });
     }, 1000);
     return () => window.clearInterval(t);
-  }, [running, completeTask]);
+  }, [running, minutes]);
+
+  // When the countdown reaches zero (and we're not mid-run), persist the
+  // completed session once and award XP with the same amount the server grants.
+  useEffect(() => {
+    if (running || left !== 0 || finishedRef.current) return;
+    finishedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      let xp = 20;
+      try {
+        const res = await recordFocusSession({ data: { durationMinutes: minutes } });
+        if (!cancelled && res) xp = res.xp ?? 20;
+      } catch {
+        // Offline or not authenticated — the local completion still stands.
+      }
+      if (!cancelled) completeTask("focus", { title: "Focus Sprint", xp });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [running, left, minutes, completeTask]);
+
+  const startTimer = () => {
+    if (!running) finishedRef.current = false;
+    setRunning((r) => !r);
+  };
+
+  const resetTimer = () => {
+    finishedRef.current = false;
+    setRunning(false);
+    setLeft(minutes * 60);
+  };
 
   const mm = String(Math.floor(left / 60)).padStart(2, "0");
   const ss = String(left % 60).padStart(2, "0");
@@ -70,6 +106,7 @@ function FocusPage() {
               <button
                 key={p}
                 onClick={() => {
+                  finishedRef.current = false;
                   setMinutes(p);
                   setLeft(p * 60);
                   setRunning(false);
@@ -86,16 +123,13 @@ function FocusPage() {
           </div>
           <div className="mt-5 flex justify-center gap-2">
             <button
-              onClick={() => setRunning((r) => !r)}
+              onClick={startTimer}
               className="focus-ring rounded-full bg-brand px-6 py-3 text-sm font-bold text-navy"
             >
               {running ? "Pause" : "Start focus"}
             </button>
             <button
-              onClick={() => {
-                setRunning(false);
-                setLeft(minutes * 60);
-              }}
+              onClick={resetTimer}
               className="focus-ring rounded-full bg-muted px-6 py-3 text-sm font-semibold"
             >
               Reset
@@ -117,14 +151,7 @@ function FocusPage() {
                 className="focus-ring flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm"
               />
               <button
-                onClick={() =>
-                  setSteps([
-                    "Pick up visible clutter",
-                    "Put clothes away",
-                    "Clear surfaces",
-                    "Take out trash",
-                  ])
-                }
+                onClick={() => setSteps(breakdownTask(breakdownInput))}
                 className="focus-ring rounded-full bg-brand px-4 py-2.5 text-sm font-bold text-navy"
               >
                 Break it down

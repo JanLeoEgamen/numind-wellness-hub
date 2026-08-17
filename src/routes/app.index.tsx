@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useNuMind } from "@/lib/numind-store";
 import { TODAYS_JOURNEY, USER, MEMORIES } from "@/lib/mock-data";
+import { useMyStats } from "@/lib/server-data";
 import {
   ProgressRing,
   ProgressBar,
@@ -26,6 +27,9 @@ export const Route = createFileRoute("/app/")({
 });
 
 function Home() {
+  const profile = useMyStats().data?.profile;
+  const firstName =
+    profile?.nickname ?? profile?.firstName ?? profile?.lastName ?? USER.name;
   const {
     completed,
     totalTasks,
@@ -53,7 +57,7 @@ function Home() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">
-              <span aria-hidden>🌞</span> Good morning, {USER.name}!
+              <span aria-hidden>🌞</span> Good morning, {firstName}!
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Small steps count. You have {totalTasks - done} things waiting whenever you're ready.

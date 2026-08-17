@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { PLAY_ACTIVITIES } from "@/lib/mock-data";
 import { useNuMind } from "@/lib/numind-store";
+import { recordGamePlay } from "@/lib/server-functions";
 import { PageHeader, SoftCard, XPBadge, LockedPill } from "@/components/numind/ui-kit";
 import { cn } from "@/lib/utils";
 
@@ -139,8 +140,11 @@ function PlayPage() {
               <button onClick={() => setOpen(null)} className="focus-ring flex-1 rounded-full bg-muted py-3 text-sm font-semibold">Close</button>
               <button
                 onClick={() => {
+                  const gameId = open ?? "activity";
                   setOpen(null);
                   celebrate({ emoji: "🎮", title: "Nice play!", message: "That counts toward today's journey.", xp: 20, chain: ["+20 XP earned", "Quest progress updated", "Garden growth updated", "Numi is celebrating 🤖"] });
+                  // Persist the play session (XP once per game per day).
+                  recordGamePlay({ data: { game: gameId, xp: 20 } }).catch(() => {});
                 }}
                 className="focus-ring flex-1 rounded-full bg-brand py-3 text-sm font-bold text-navy"
               >

@@ -1,10 +1,21 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useNuMind } from "@/lib/numind-store";
 import { USER } from "@/lib/mock-data";
+import { useMyNotifications } from "@/lib/server-data";
 import { NumiAvatar, StreakBadge, ProgressBar } from "@/components/numind/ui-kit";
 import { CelebrationModal } from "@/components/numind/celebration";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { signOut } from "@/hooks/useAuth";
 
 const PRIMARY = [
@@ -52,7 +63,27 @@ function NavItem({ to, emoji, label, active }: { to: string; emoji: string; labe
 export function AppShell({ children, rightPanel }: { children: ReactNode; rightPanel?: ReactNode }) {
   const { pathname } = useRouterState({ select: (s) => s.location });
   const { xp, xpInLevel, xpForLevel, levelName, levelEmoji, streak, levelIndex } = useNuMind();
+  const { data: srvNotes } = useMyNotifications();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const navigate = useNavigate();
+
+  // Unread notification count for the header badge. Falls back to 0 when the
+  // server query is pending/unavailable.
+  const unreadCount = (srvNotes ?? []).filter((n) => !n.read).length;
+
+  const confirmLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await signOut();
+      navigate({ to: "/login" });
+    } catch {
+      setLoggingOut(false);
+      setLogoutOpen(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,13 +139,15 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
               </span>
               <Link
                 to="/app/notifications"
-                aria-label="Notifications, 3 unread"
+                aria-label={`Notifications, ${unreadCount} unread`}
                 className="focus-ring relative grid h-9 w-9 place-items-center rounded-full bg-muted hover:bg-accent"
               >
                 <span aria-hidden>🔔</span>
-                <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-coral text-[10px] font-bold text-navy">
-                  3
-                </span>
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-coral px-1 text-[10px] font-bold text-navy">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                ) : null}
               </Link>
               <Link
                 to="/app/profile"
@@ -125,7 +158,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
               </Link>
               <button
                 type="button"
-                onClick={() => void signOut()}
+                onClick={() => setLogoutOpen(true)}
                 aria-label="Log out"
                 title="Log out"
                 className="focus-ring grid h-9 w-9 place-items-center rounded-full bg-muted hover:bg-accent"
@@ -225,6 +258,34 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
           </div>
         </div>
       ) : null}
+
+      {/* Log out confirmation */}
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent className="max-w-sm rounded-3xl text-center">
+          <AlertDialogHeader className="items-center text-center">
+            <span className="text-4xl" aria-hidden>
+              👋
+            </span>
+            <AlertDialogTitle>Log out of NuMind?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You can pick up right where you left off next time. Your streak and garden are safe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogCancel disabled={loggingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmLogout();
+              }}
+              disabled={loggingOut}
+              className="bg-coral text-navy hover:brightness-105"
+            >
+              {loggingOut ? "Logging out…" : "Log out"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <CelebrationModal />
     </div>
