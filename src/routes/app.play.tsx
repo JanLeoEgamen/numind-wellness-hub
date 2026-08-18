@@ -52,16 +52,7 @@ function PlayPage() {
               <p className="text-sm text-muted-foreground">{a.desc}</p>
               <button
                 disabled={a.locked}
-                onClick={() => {
-                  if (a.playable) {
-                    setOpen(a.id);
-                  } else {
-                    // Give instant feedback, then persist so the play is
-                    // recorded for this account owner (once per game per day).
-                    awardXp(a.xp, `${a.name} complete`);
-                    recordGamePlay({ data: { game: a.id, xp: a.xp } }).catch(() => {});
-                  }
-                }}
+                onClick={() => (a.playable ? setOpen(a.id) : awardXp(a.xp, `${a.name} complete`))}
                 className={cn("focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold", a.locked ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-brand text-navy")}
               >
                 {a.locked ? "Premium" : a.playable ? "Play" : "Mark done"}
