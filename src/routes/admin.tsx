@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   useAdminBroadcast,
   useAdminCatalog,
@@ -696,12 +697,9 @@ function NotificationsPanel() {
       </p>
       <form onSubmit={submit} className="mt-4 grid gap-3">
         <div className="flex gap-2">
-          <input
-            value={emoji}
-            onChange={(e) => setEmoji(e.target.value)}
-            placeholder="Emoji (🌱)"
-            className="focus-ring w-20 rounded-xl border border-border bg-card px-3 py-2 text-sm"
-          />
+          <div className="w-32 shrink-0">
+            <EmojiPicker value={emoji} onChange={(v) => setEmoji(typeof v === "string" ? v : String(v ?? ""))} />
+          </div>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -885,7 +883,190 @@ function createDefaults(table: CatalogTable): Record<string, unknown> {
   return d;
 }
 
-function FieldInput({ field, value, onChange }: { field: string; value: unknown; onChange: (v: unknown) => void }) {
+// ---------------------------------------------------------------------------
+// Friendlier admin form inputs: dropdowns for "item applicable" fields
+// (category / type / difficulty / tone …) and an emoji picker.
+// ---------------------------------------------------------------------------
+
+function prettyLabel(v: string): string {
+  return v
+    .split("_")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
+// Allowed values per catalog field. Any field listed here renders as a
+// dropdown instead of a free-text box. Values match the DB seed data / check
+// constraints, but a "Custom…" option keeps existing or new values editable.
+const FIELD_OPTIONS: Record<string, Record<string, readonly string[]>> = {
+  quests: {
+    category: ["ritual", "mind_gym", "wellness", "journal", "focus", "garden", "seasonal", "community"],
+    quest_type: ["daily", "weekly", "monthly", "seasonal"],
+  },
+  mind_gym_activities: {
+    category: ["breathe", "ground", "reflect", "move", "calm", "focus", "mindfulness", "gratitude", "stress", "wind-down", "self-care", "motivation"],
+    difficulty: ["easy", "medium", "hard"],
+  },
+  learning_content: {
+    content_type: ["article", "lesson", "video", "tip", "quiz", "challenge"],
+    category: ["sleep", "stress", "habits", "focus", "self_awareness", "self_care", "mindfulness", "mood", "connection"],
+  },
+  quizzes: {
+    category: ["learning", "wellness", "self_awareness"],
+  },
+  badges: {
+    category: ["milestone", "streak", "mind_gym", "focus", "journal", "wellness", "learning", "quest", "community", "special"],
+  },
+  rewards: {
+    reward_type: ["garden_decoration", "numi_accessory", "theme", "avatar_accessory", "badge_frame", "sticker", "seasonal"],
+  },
+  garden_items: {
+    item_type: ["flower", "tree", "butterfly", "bird", "bench", "fountain", "path", "decoration", "seasonal"],
+  },
+  games: {
+    category: ["memory", "breathe", "words", "sort"],
+  },
+  numi_prompts: {
+    category: ["reflection", "grounding", "celebration", "check-in"],
+    tone: ["gentle", "calm", "encouraging"],
+  },
+  safety_resources: {
+    country_code: ["GLOBAL", "US", "GB", "AU", "PH", "CA", "IN", "NZ", "IE", "SG"],
+  },
+};
+
+function OptionSelect({ options, value, onChange }: { options: readonly string[]; value: unknown; onChange: (v: unknown) => void }) {
+  const str = String(value ?? "");
+  const isKnown = options.includes(str);
+  const [custom, setCustom] = useState(!isKnown);
+  // Keep legacy/custom values visible in the list so nothing is ever lost.
+  const allOptions = isKnown || str === "" ? options : [...options, str];
+
+  return (
+    <div className="grid gap-1.5">
+      <select
+        value={custom ? "custom" : str}
+        onChange={(e) => {
+          if (e.target.value === "custom") {
+            setCustom(true);
+            return;
+          }
+          setCustom(false);
+          onChange(e.target.value);
+        }}
+        className="focus-ring w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
+      >
+        {allOptions.map((o) => (
+          <option key={o} value={o}>
+            {prettyLabel(o)}
+          </option>
+        ))}
+        <option value="custom">✏️ Custom…</option>
+      </select>
+      {custom && (
+        <input
+          autoFocus
+          value={isKnown ? "" : str}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Type a custom value"
+          className="focus-ring w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
+        />
+      )}
+    </div>
+  );
+}
+
+const EMOJI_GROUPS: { label: string; emojis: string[] }[] = [
+  { label: "Nature", emojis: ["🌱", "🌿", "🌷", "🌸", "🌻", "🌼", "🌺", "🌳", "🌲", "🌴", "🍀", "🌾", "🌹", "🥀", "🍃", "🍂", "🍁", "🌵", "🌊", "🏝️"] },
+  { label: "Sky", emojis: ["☀️", "🌞", "🌝", "🌙", "⭐", "✨", "🌟", "💫", "☁️", "🌤️", "⛅", "🌧️", "⚡", "🔥", "💧", "❄️", "🌈"] },
+  { label: "Mind & Body", emojis: ["🧠", "🧘", "🫁", "❤️", "💛", "💚", "💙", "💜", "🤍", "💆", "🖐️", "🤸", "🏃", "🚶", "🛁", "💤", "😴"] },
+  { label: "Food", emojis: ["🥗", "💧", "🍎", "🥑", "🍵", "☕", "🍋", "🥕", "🍉", "🍊", "🍇", "🥛", "🍫"] },
+  { label: "Objects", emojis: ["🏆", "🎯", "🎁", "🎓", "📖", "📚", "✏️", "📝", "💭", "💌", "🎨", "🎵", "⏱️", "🔁", "🎬", "❓", "🏮", "🪑", "⛲", "🪨", "🎄", "🎈", "🧸", "🫧", "🏡", "🎀"] },
+  { label: "Animals", emojis: ["🦋", "🐦", "🐝", "🐢", "🦉", "🕊️", "🐬", "🐳", "🐘", "🦌", "🦢", "🐠", "🐚"] },
+  { label: "Feelings", emojis: ["😊", "🙂", "😌", "😁", "🤗", "🥰", "😇", "😀", "😄", "🥳", "💪", "👏", "🙌", "🤝"] },
+  { label: "Seasonal", emojis: ["🌸", "🌞", "🍂", "❄️", "🎃", "🎄", "🐰", "🌻", "🏖️", "⛄", "💐"] },
+];
+
+function EmojiPicker({ value, onChange }: { value: string; onChange: (v: unknown) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="focus-ring flex h-11 w-full items-center gap-2 rounded-xl border border-border bg-card px-3 text-left"
+        >
+          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-muted text-xl">
+            {value || "🫥"}
+          </span>
+          <span className={cn("truncate text-xs font-medium", value ? "text-foreground" : "text-muted-foreground")}>
+            {value ? `Emoji: ${value.trim()}` : "Pick an emoji"}
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <label className="text-xs font-semibold">Choose an emoji</label>
+          {value && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              className="focus-ring rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+          {EMOJI_GROUPS.map((g) => (
+            <div key={g.label}>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{g.label}</p>
+              <div className="grid grid-cols-8 gap-0.5">
+                {g.emojis.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => {
+                      onChange(e);
+                      setOpen(false);
+                    }}
+                    aria-label={`Pick emoji ${e}`}
+                    className={cn(
+                      "focus-ring grid aspect-square place-items-center rounded-lg text-xl hover:bg-muted",
+                      value === e && "bg-brand text-navy",
+                    )}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2">
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="…or paste any emoji here"
+            className="focus-ring w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function FieldInput({ table, field, value, onChange }: { table: CatalogTable; field: string; value: unknown; onChange: (v: unknown) => void }) {
+  const options = FIELD_OPTIONS[table]?.[field];
+  if (options) {
+    return <OptionSelect options={options} value={value} onChange={onChange} />;
+  }
+  if (field === "emoji") {
+    return <EmojiPicker value={String(value ?? "")} onChange={onChange} />;
+  }
   const t = typeof value;
   if (t === "boolean") {
     return <input type="checkbox" checked={value as boolean} onChange={(e) => onChange(e.target.checked)} className="focus-ring size-5" />;
@@ -956,7 +1137,7 @@ function CatalogPanel({ label, table }: { label: string; table: CatalogTable }) 
             {Object.entries(editing.values).map(([key, value]) => (
               <label key={key} className="grid gap-1 text-xs">
                 <span className="font-semibold capitalize text-muted-foreground">{key.replace(/_/g, " ")}</span>
-                <FieldInput field={key} value={value} onChange={(v) => setField(key, v)} />
+                <FieldInput table={table} field={key} value={value} onChange={(v) => setField(key, v)} />
               </label>
             ))}
           </div>

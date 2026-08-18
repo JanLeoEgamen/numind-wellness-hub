@@ -228,19 +228,17 @@ Primary palette
 
 Build the visual system around:
 
-Deep navy
+Deep blue (navy)
 
-Bright teal
-
-Cyan
+Sunny yellow
 
 White
 
-Soft lavender
+Soft yellow accents
 
-Soft purple
+Soft blue accents
 
-Light mint
+Bright blue accents
 
 Subtle gradients
 
@@ -2324,11 +2322,11 @@ Dark mode should use:
 
 Deep navy backgrounds
 
-Soft cards
+Soft blue cards
 
-Teal/cyan accents
+Yellow accents
 
-Lavender/purple highlights
+Blue highlights
 
 Comfortable text contrast
 
