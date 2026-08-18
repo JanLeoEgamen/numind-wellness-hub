@@ -195,7 +195,7 @@ export const adminSetCatalogActive = createServerFn({ method: "POST" })
     if (!isCatalogTable(data.table)) throw new Error("Unknown admin table");
     const { error } = await (context.supabase as any)
       .from(data.table)
-      .update({ active: data.active })
+      .update(data.table === "feature_flags" ? { enabled: data.active } : { active: data.active })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

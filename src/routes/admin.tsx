@@ -66,32 +66,58 @@ const NAV = [
   "XP",
 ];
 
+const ACCESS_CHECK_TIMEOUT_MS = 15_000;
+
 function Admin() {
   const [section, setSection] = useState("Dashboard");
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) {
-        navigate({ to: "/login" });
-        return;
-      }
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.session.user.id)
-        .eq("role", "admin")
-        .maybeSingle();
+    // Never leave the page stuck on "Checking access…": if the auth/session
+    // calls hang (e.g. a stalled token refresh in the preview sandbox), surface
+    // an actionable error instead of an infinite spinner.
+    const timer = window.setTimeout(() => {
       if (cancelled) return;
-      if (!error && data) setIsAdmin(true);
+      setAccessError("Timed out while verifying admin access. Please refresh the page and try again.");
       setChecking(false);
+    }, ACCESS_CHECK_TIMEOUT_MS);
+
+    (async () => {
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (!session.session) {
+          navigate({ to: "/login" });
+          return;
+        }
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.session.user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+        if (cancelled) return;
+        if (error) throw new Error(error.message);
+        if (data) setIsAdmin(true);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[admin] access check failed", err);
+        setAccessError(err instanceof Error ? err.message : "Could not verify admin access.");
+      } finally {
+        if (!cancelled) {
+          window.clearTimeout(timer);
+          setChecking(false);
+        }
+      }
     })();
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [navigate]);
 
@@ -99,6 +125,32 @@ function Admin() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-sm text-muted-foreground">Checking access…</p>
+      </div>
+    );
+  }
+
+  if (accessError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="card-soft max-w-md p-8 text-center">
+          <p className="text-4xl">⚠️</p>
+          <h1 className="mt-3 text-xl font-bold">Can&apos;t open the admin area</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{accessError}</p>
+          <div className="mt-6 flex justify-center gap-2">
+            <button
+              onClick={() => navigate({ to: "/app" })}
+              className="focus-ring rounded-full bg-brand px-5 py-2 text-sm font-semibold text-navy"
+            >
+              Back to the app
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="focus-ring rounded-full bg-muted px-5 py-2 text-sm font-semibold"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

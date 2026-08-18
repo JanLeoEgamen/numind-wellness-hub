@@ -6,8 +6,18 @@ import { supabase } from './client'
 // the browser never attaches the bearer token to serverFn RPCs.
 export const attachSupabaseAuth = createMiddleware({ type: 'function' }).client(
   async ({ next }) => {
-    const { data } = await supabase.auth.getSession()
-    const token = data.session?.access_token
+    // A blocked or hanging session lookup (e.g. a stalled token refresh in a
+    // sandboxed preview) must not stall every server function call. Read the
+    // token defensively and continue without an Authorization header if the
+    // lookup fails; the server-side auth middleware will then reject the call
+    // with a clear error instead of the client hanging forever.
+    let token: string | undefined
+    try {
+      const { data } = await supabase.auth.getSession()
+      token = data.session?.access_token
+    } catch (err) {
+      console.warn('[supabase] could not read session for server fn request', err)
+    }
     return next({
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
