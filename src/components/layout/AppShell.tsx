@@ -2,8 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useNuMind } from "@/lib/numind-store";
-import { USER } from "@/lib/mock-data";
-import { useMyNotifications } from "@/lib/server-data";
+import { useMyStats, useMyNotifications } from "@/lib/server-data";
 import { NumiAvatar, StreakBadge, ProgressBar } from "@/components/numind/ui-kit";
 import { CelebrationModal } from "@/components/numind/celebration";
 import {

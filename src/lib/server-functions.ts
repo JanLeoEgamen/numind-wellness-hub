@@ -30,6 +30,7 @@ export type MyStats = {
     avatar: string | null;
     preferredMotivationalStyle: string;
     onboardingCompleted: boolean;
+    createdAt: string | null;
   } | null;
   xpTotal: number;
   level: { number: number; name: string; tagline: string | null; emoji: string | null };
@@ -58,7 +59,7 @@ export const getMyStats = createServerFn({ method: "POST" })
         supabase
           .from("profiles")
           .select(
-            "id, first_name, last_name, nickname, avatar, preferred_motivational_style, onboarding_completed",
+            "id, first_name, last_name, nickname, avatar, preferred_motivational_style, onboarding_completed, created_at",
           )
           .eq("id", userId)
           .maybeSingle(),
@@ -175,6 +176,7 @@ export const getMyStats = createServerFn({ method: "POST" })
             avatar: profileRows.avatar,
             preferredMotivationalStyle: profileRows.preferred_motivational_style,
             onboardingCompleted: profileRows.onboarding_completed,
+            createdAt: profileRows.created_at,
           }
         : null,
       xpTotal,
@@ -203,6 +205,97 @@ export const getMyStats = createServerFn({ method: "POST" })
       },
       dailyRewardClaimed: (rewardRes.data?.length ?? 0) > 0,
     };
+
+export type UpdateProfileInput = {
+  nickname?: string;
+  avatar?: string;
+  firstName?: string;
+  lastName?: string;
+  preferredMotivationalStyle?: string;
+};
+
+export const updateMyProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: UpdateProfileInput) => d)
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const { supabase, userId } = context;
+    const patch: Record<string, string> = {};
+    if (data.nickname !== undefined) patch["nickname"] = data.nickname.trim();
+    if (data.avatar !== undefined) patch["avatar"] = data.avatar;
+    if (data.firstName !== undefined) patch["first_name"] = data.firstName.trim();
+    if (data.lastName !== undefined) patch["last_name"] = data.lastName.trim();
+    if (data.preferredMotivationalStyle !== undefined) {
+      patch["preferred_motivational_style"] = data.preferredMotivationalStyle;
+    }
+    if (Object.keys(patch).length === 0) return { ok: true };
+    const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export type MyGoal = {
+  id: string;
+  title: string;
+  category: string;
+  status: string;
+  currentValue: number;
+  targetValue: number | null;
+  createdAt: string;
+};
+
+export const getMyGoals = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MyGoal[]> => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("goals")
+      .select("id, title, category, status, current_value, target_value, created_at")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("created_at");
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((g) => ({
+      id: g.id,
+      title: g.title,
+      category: g.category,
+      status: g.status,
+      currentValue: g.current_value,
+      targetValue: g.target_value,
+      createdAt: g.created_at,
+    }));
+  });
+
+export const addMyGoal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { title: string }) => d)
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const { supabase, userId } = context;
+    const title = data.title.trim();
+    if (!title) throw new Error("Goal title can't be empty.");
+    const { error } = await supabase.from("goals").insert({
+      user_id: userId,
+      title,
+      category: "wellbeing",
+      status: "active",
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const completeMyGoal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { id: string }) => d)
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("goals")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
   });
 
 // ---------------------------------------------------------------------------
@@ -1785,46 +1878,135 @@ export const claimDailyReward = createServerFn({ method: "POST" })
   });
 
 // ---------------------------------------------------------------------------
-// 18. Healthy Play - record a game session (awards XP once per game per day)
+// 18. Healthy Play - catalogue + recorded sessions (XP once per game per day)
 // ---------------------------------------------------------------------------
+
+export type MyGame = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  emoji: string | null;
+  category: string | null;
+  xpReward: number;
+  premiumRequired: boolean;
+  playedToday: boolean;
+};
+
+export type MyGamesResult = {
+  games: MyGame[];
+  isPremium: boolean;
+  playedTodayCount: number;
+};
+
+export const getMyGames = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MyGamesResult> => {
+    const { supabase, userId } = context;
+    const today = toDateKey(new Date());
+
+    const [gamesRes, playsRes, subRes] = await Promise.all([
+      supabase
+        .from("games")
+        .select("id, slug, name, description, emoji, category, xp_reward, premium_required")
+        .eq("active", true)
+        .order("sort_order"),
+      supabase.from("game_plays").select("game").eq("user_id", userId).eq("played_date", today),
+      supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("user_id", userId)
+        .in("status", ["active", "trialing"])
+        .maybeSingle(),
+    ]);
+
+    if (gamesRes.error) throw new Error(gamesRes.error.message);
+    if (playsRes.error) throw new Error(playsRes.error.message);
+    if (subRes.error) throw new Error(subRes.error.message);
+
+    const playedSet = new Set((playsRes.data ?? []).map((p) => p.game));
+
+    return {
+      games: (gamesRes.data ?? []).map((g) => ({
+        id: g.id,
+        slug: g.slug,
+        name: g.name,
+        description: g.description,
+        emoji: g.emoji,
+        category: g.category,
+        xpReward: g.xp_reward,
+        premiumRequired: g.premium_required,
+        playedToday: playedSet.has(g.slug),
+      })),
+      isPremium: !!subRes.data,
+      playedTodayCount: playedSet.size,
+    };
+  });
+
+export type RecordGamePlayResult = {
+  awarded: boolean;
+  playedToday: boolean;
+};
 
 export const recordGamePlay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: { game: string; xp?: number }) => d)
-  .handler(async ({ context, data }) => {
+  .handler(async ({ context, data }): Promise<RecordGamePlayResult> => {
     const { supabase, userId } = context;
-    // NOTE: `game_plays` is a new table (see migrations/..._add_game_plays.sql);
-    // it isn't in the generated types yet, so the queries are softly typed.
-    const { data: existing } = await (supabase as any)
+    const today = toDateKey(new Date());
+
+    // Only active catalogue games can award XP (keeps slugs canonical so a
+    // future FK/mapping to `games.id` stays clean).
+    const { data: game } = await supabase
+      .from("games")
+      .select("slug, xp_reward")
+      .eq("slug", data.game)
+      .eq("active", true)
+      .maybeSingle();
+    if (!game) return { awarded: false, playedToday: false };
+
+    const xp = Math.round(data.xp ?? game.xp_reward ?? 20);
+
+    const { data: existing } = await supabase
       .from("game_plays")
       .select("id")
       .eq("user_id", userId)
       .eq("game", data.game)
-      .gte("played_at", toDateKey(new Date()))
+      .eq("played_date", today)
       .maybeSingle();
 
-    if (existing) {
-      return { awarded: false };
-    }
+    if (existing) return { awarded: false, playedToday: true };
 
-    const { data: created } = await (supabase as any)
+    const { data: created, error } = await supabase
       .from("game_plays")
-      .insert({ user_id: userId, game: data.game, xp_awarded: data.xp ?? 20 })
+      .insert({ user_id: userId, game: data.game, xp_awarded: xp, played_date: today })
       .select("id")
       .single();
 
-    if (created?.id) {
-      await awardXp({
+    if (error || !created) return { awarded: false, playedToday: false };
+
+    try {
+      const result = await awardXp({
         data: {
-          amount: data.xp ?? 20,
+          amount: xp,
           sourceType: "healthy_play",
           sourceId: created.id,
-          description: `Played ${data.game}`,
+          description: `Played ${game.slug}`,
         },
-      }).catch(() => {});
-      return { awarded: true };
+      });
+      if (!result.awarded) {
+        // awardXp idempotently skipped (unexpected for a fresh source id) — the
+        // play is recorded but no XP was credited; report it truthfully.
+        return { awarded: false, playedToday: true };
+      }
+    } catch {
+      // XP award failed after the play row was written — remove the row so a
+      // retry can award instead of silently being capped for the day.
+      await supabase.from("game_plays").delete().eq("id", created.id);
+      return { awarded: false, playedToday: false };
     }
-    return { awarded: false };
+
+    return { awarded: true, playedToday: true };
   });
 
 // ---------------------------------------------------------------------------
@@ -2929,5 +3111,447 @@ export const getMyAnalytics = createServerFn({ method: "POST" })
       resetDaily,
       games,
     };
+  });
+
+
+// ---------------------------------------------------------------------------
+// 22. Settings, security & data (preferences, password, export, delete)
+// ---------------------------------------------------------------------------
+
+export type UserSettings = {
+  theme: "light" | "dark" | "system";
+  fontScale: number;
+  reduceMotion: boolean;
+  highContrast: boolean;
+  dailyResetReminder: boolean;
+  streakNudges: boolean;
+  gardenRewards: boolean;
+  communityActivity: boolean;
+  reminderTime: "Morning" | "Afternoon" | "Evening" | "Custom";
+  privateJournal: boolean;
+  numiPersonalization: boolean;
+  numiMemory: boolean;
+  showNickname: boolean;
+  appearInMilestones: boolean;
+};
+
+type UserPreferencesRow = Database["public"]["Tables"]["user_preferences"]["Row"];
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  theme: "light",
+  fontScale: 100,
+  reduceMotion: false,
+  highContrast: false,
+  dailyResetReminder: true,
+  streakNudges: true,
+  gardenRewards: true,
+  communityActivity: false,
+  reminderTime: "Morning",
+  privateJournal: true,
+  numiPersonalization: true,
+  numiMemory: true,
+  showNickname: true,
+  appearInMilestones: true,
+};
+
+const REMINDER_TIMES: readonly UserSettings["reminderTime"][] = [
+  "Morning",
+  "Afternoon",
+  "Evening",
+  "Custom",
+];
+
+const SETTINGS_FIELD_MAP: Record<keyof UserSettings, keyof UserPreferencesRow> = {
+  theme: "theme",
+  fontScale: "font_scale",
+  reduceMotion: "reduce_motion",
+  highContrast: "high_contrast",
+  dailyResetReminder: "daily_reset_reminder",
+  streakNudges: "streak_nudges",
+  gardenRewards: "garden_rewards",
+  communityActivity: "community_activity",
+  reminderTime: "reminder_time",
+  privateJournal: "private_journal",
+  numiPersonalization: "numi_personalization",
+  numiMemory: "numi_memory",
+  showNickname: "show_nickname",
+  appearInMilestones: "appear_in_milestones",
+};
+
+function mapSettingsRow(row: UserPreferencesRow): UserSettings {
+  return {
+    theme: row.theme === "dark" || row.theme === "system" ? row.theme : "light",
+    fontScale: row.font_scale,
+    reduceMotion: row.reduce_motion,
+    highContrast: row.high_contrast,
+    dailyResetReminder: row.daily_reset_reminder,
+    streakNudges: row.streak_nudges,
+    gardenRewards: row.garden_rewards,
+    communityActivity: row.community_activity,
+    reminderTime: REMINDER_TIMES.includes(row.reminder_time as UserSettings["reminderTime"])
+      ? (row.reminder_time as UserSettings["reminderTime"])
+      : "Morning",
+    privateJournal: row.private_journal,
+    numiPersonalization: row.numi_personalization,
+    numiMemory: row.numi_memory,
+    showNickname: row.show_nickname,
+    appearInMilestones: row.appear_in_milestones,
+  };
+}
+
+export const getMySettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<UserSettings> => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("user_preferences")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return DEFAULT_SETTINGS;
+    return mapSettingsRow(data);
+  });
+
+export type SaveSettingsInput = { patch: Partial<UserSettings> };
+
+export const saveMySettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: SaveSettingsInput) => d)
+  .handler(async ({ context, data }): Promise<UserSettings> => {
+    const { supabase, userId } = context;
+    const row: Record<string, unknown> = { id: userId };
+    for (const key of Object.keys(data.patch) as (keyof UserSettings)[]) {
+      const value = data.patch[key];
+      if (value === undefined) continue;
+      row[SETTINGS_FIELD_MAP[key]] = value;
+    }
+    const { data: saved, error } = await supabase
+      .from("user_preferences")
+      .upsert(row as UserPreferencesRow, { onConflict: "id" })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapSettingsRow(saved);
+  });
+
+
+
+export const changeMyPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { newPassword: string }) => d)
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    if (!data.newPassword || data.newPassword.length < 8) {
+      throw new Error("New password must be at least 8 characters.");
+    }
+    const { error } = await context.supabase.auth.updateUser({ password: data.newPassword });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export type MyDataExport = {
+  exportedAt: string;
+  app: string;
+  [table: string]: Json | Json[] | undefined;
+};
+
+// Owned tables keyed by user_id (plus the id-keyed profiles/preferences below).
+const USER_TABLES_BY_USER_ID = [
+  "goals",
+  "daily_resets",
+  "wellness_habits",
+  "habit_logs",
+  "mind_checks",
+  "mind_gym_completions",
+  "focus_sessions",
+  "quest_completions",
+  "journal_entries",
+  "learning_progress",
+  "xp_transactions",
+  "user_badges",
+  "gardens",
+  "user_garden_items",
+  "memories",
+  "user_rewards",
+  "ai_conversations",
+  "ai_conversation_messages",
+  "ai_memories",
+  "notifications",
+  "subscriptions",
+  "game_plays",
+  "focus_plans",
+  "community_posts",
+  "community_reactions",
+  "user_roles",
+] as const;
+
+const USER_TABLES_BY_ID = ["profiles", "user_preferences"] as const;
+
+export const exportMyData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MyDataExport> => {
+    const { supabase, userId } = context;
+    const payload: MyDataExport = {
+      exportedAt: new Date().toISOString(),
+      app: "NuMind Wellness Hub",
+    };
+
+    for (const table of USER_TABLES_BY_ID) {
+      const { data, error } = await supabase.from(table).select("*").eq("id", userId);
+      if (error) throw new Error(error.message);
+      payload[table] = data ?? [];
+    }
+    for (const table of USER_TABLES_BY_USER_ID) {
+      const { data, error } = await supabase.from(table).select("*").eq("user_id", userId);
+      if (error) throw new Error(error.message);
+      payload[table] = data ?? [];
+    }
+    return payload;
+  });
+
+export const deleteMyAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ ok: true }> => {
+    const { userId } = context;
+    // Deleting the auth user cascades to every owned row (all owned tables
+    // reference auth.users(id) on delete cascade), so a single admin call is
+    // the complete, race-free account deletion.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// 23. Rewards marketplace (catalog, spendable XP balance, redeem, equip)
+// ---------------------------------------------------------------------------
+
+export type RewardCategory = {
+  id: string;
+  label: string;
+  emoji: string;
+};
+
+export const REWARD_CATEGORIES: RewardCategory[] = [
+  { id: "garden_decoration", label: "Garden Decorations", emoji: "🌸" },
+  { id: "numi_accessory", label: "Numi Accessories", emoji: "🤖" },
+  { id: "theme", label: "Themes", emoji: "🎨" },
+  { id: "avatar_accessory", label: "Avatar Accessories", emoji: "👤" },
+  { id: "badge_frame", label: "Badge Frames", emoji: "🏅" },
+  { id: "sticker", label: "Stickers", emoji: "✨" },
+  { id: "relaxation_content", label: "Relaxation Content", emoji: "🌙" },
+  { id: "seasonal", label: "Seasonal Items", emoji: "🎁" },
+];
+
+export type MarketplaceReward = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  rewardType: string;
+  categoryLabel: string;
+  categoryEmoji: string;
+  emoji: string | null;
+  xpCost: number;
+  unlockLevel: number;
+  premiumRequired: boolean;
+  limited: boolean;
+  owned: boolean;
+  equipped: boolean;
+};
+
+export type RewardsMarketplace = {
+  balance: number;
+  lifetimeXp: number;
+  level: { number: number; name: string };
+  isPremium: boolean;
+  equippedId: string | null;
+  rewards: MarketplaceReward[];
+};
+
+// Spendable balance = lifetime XP earned minus XP spent on rewards. Lifetime XP
+// (and therefore levels) never decreases — purchases only consume the balance.
+async function getRewardsMarketplaceSummary(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<RewardsMarketplace> {
+  const [catalogRes, ownedRes, xpRes, spentRes, levelRes, subRes] = await Promise.all([
+    supabase.from("rewards").select("*").eq("active", true).order("xp_cost"),
+    supabase.from("user_rewards").select("reward_id, equipped").eq("user_id", userId),
+    supabase.from("xp_transactions").select("amount").eq("user_id", userId),
+    supabase.from("user_rewards").select("xp_spent").eq("user_id", userId),
+    supabase
+      .from("levels")
+      .select("level_number, name, xp_required")
+      .order("xp_required"),
+    supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing"])
+      .maybeSingle(),
+  ]);
+
+  if (catalogRes.error) throw new Error(catalogRes.error.message);
+  if (ownedRes.error) throw new Error(ownedRes.error.message);
+  if (xpRes.error) throw new Error(xpRes.error.message);
+  if (spentRes.error) throw new Error(spentRes.error.message);
+  if (levelRes.error) throw new Error(levelRes.error.message);
+  if (subRes.error) throw new Error(subRes.error.message);
+
+  const lifetimeXp = (xpRes.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+  const spent = (spentRes.data ?? []).reduce((s, r) => s + (r.xp_spent ?? 0), 0);
+
+  const ownedMap = new Map((ownedRes.data ?? []).map((r) => [r.reward_id, r.equipped]));
+  let equippedId: string | null = null;
+  for (const [id, isEquipped] of ownedMap) {
+    if (isEquipped) equippedId = id;
+  }
+
+  let currentLevel = (levelRes.data ?? [])[0] ?? { level_number: 1, name: "Explorer" };
+  for (const l of levelRes.data ?? []) {
+    if (lifetimeXp >= (l.xp_required ?? 0)) currentLevel = l;
+  }
+
+  const rewards: MarketplaceReward[] = (catalogRes.data ?? []).map((r) => {
+    const cat = REWARD_CATEGORIES.find((c) => c.id === r.reward_type);
+    return {
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      rewardType: r.reward_type,
+      categoryLabel: cat?.label ?? r.reward_type,
+      categoryEmoji: cat?.emoji ?? "🎁",
+      emoji: r.emoji,
+      xpCost: r.xp_cost,
+      unlockLevel: r.unlock_level,
+      premiumRequired: r.premium_required,
+      limited: r.reward_type === "seasonal",
+      owned: ownedMap.has(r.id),
+      equipped: ownedMap.get(r.id) === true,
+    };
+  });
+
+  return {
+    balance: Math.max(0, lifetimeXp - spent),
+    lifetimeXp,
+    level: { number: currentLevel.level_number, name: currentLevel.name },
+    isPremium: !!subRes.data,
+    equippedId,
+    rewards,
+  };
+}
+
+
+export const getRewardsMarketplace = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<RewardsMarketplace> => {
+    return getRewardsMarketplaceSummary(context.supabase, context.userId);
+  });
+
+export const redeemReward = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { rewardId: string }) => d)
+  .handler(async ({ context, data }): Promise<RewardsMarketplace> => {
+    const { supabase, userId } = context;
+    const { rewardId } = data;
+
+    const { data: reward } = await supabase
+      .from("rewards")
+      .select("id, xp_cost, unlock_level, premium_required, active")
+      .eq("id", rewardId)
+      .eq("active", true)
+      .maybeSingle();
+    if (!reward) throw new Error("That reward isn't available right now.");
+
+    // Idempotency guard: already owned → just return the current state.
+    const { data: existing } = await supabase
+      .from("user_rewards")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("reward_id", rewardId)
+      .maybeSingle();
+    if (existing) return getRewardsMarketplaceSummary(supabase, userId);
+
+    const [xpRes, spentRes, levelRes, subRes] = await Promise.all([
+      supabase.from("xp_transactions").select("amount").eq("user_id", userId),
+      supabase.from("user_rewards").select("xp_spent").eq("user_id", userId),
+      supabase.from("levels").select("level_number, xp_required").order("xp_required"),
+      supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("user_id", userId)
+        .in("status", ["active", "trialing"])
+        .maybeSingle(),
+    ]);
+
+    const lifetimeXp = (xpRes.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+    const spent = (spentRes.data ?? []).reduce((s, r) => s + (r.xp_spent ?? 0), 0);
+    if (lifetimeXp - spent < reward.xp_cost) {
+      throw new Error("Not enough XP for this reward yet.");
+    }
+
+    let currentLevel = 1;
+    for (const l of levelRes.data ?? []) {
+      if (lifetimeXp >= (l.xp_required ?? 0)) currentLevel = l.level_number;
+    }
+    if (currentLevel < reward.unlock_level) {
+      throw new Error(`Reach Level ${reward.unlock_level} to unlock this reward.`);
+    }
+
+    const isPremium = !!subRes.data;
+    if (reward.premium_required && !isPremium) {
+      throw new Error("This reward is part of NuMind Plus.");
+    }
+
+    const { error } = await supabase.from("user_rewards").insert({
+      user_id: userId,
+      reward_id: rewardId,
+      xp_spent: reward.xp_cost,
+      equipped: false,
+    });
+    if (error) {
+      // 23505 = unique (user_id, reward_id); a concurrent redeem won the race.
+      if (error.code !== "23505") throw new Error(error.message);
+    }
+
+    return getRewardsMarketplaceSummary(supabase, userId);
+  });
+
+export const equipReward = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { rewardId: string | null }) => d)
+  .handler(async ({ context, data }): Promise<RewardsMarketplace> => {
+    const { supabase, userId } = context;
+    const { rewardId } = data;
+
+    if (rewardId) {
+      const { data: owned } = await supabase
+        .from("user_rewards")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("reward_id", rewardId)
+        .maybeSingle();
+      if (!owned) throw new Error("Unlock this reward before equipping it.");
+    }
+
+    // One equipped reward at a time: clear first, then set the new one.
+    const { error: clearError } = await supabase
+      .from("user_rewards")
+      .update({ equipped: false })
+      .eq("user_id", userId);
+    if (clearError) throw new Error(clearError.message);
+
+    if (rewardId) {
+      const { error: equipError } = await supabase
+        .from("user_rewards")
+        .update({ equipped: true })
+        .eq("user_id", userId)
+        .eq("reward_id", rewardId);
+      if (equipError) throw new Error(equipError.message);
+    }
+
+    return getRewardsMarketplaceSummary(supabase, userId);
   });
 

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -11,6 +11,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.15"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -255,6 +280,44 @@ export type Database = {
           },
         ]
       }
+      community_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          post_id: string
+          reason: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id: string
+          reason?: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_resets: {
         Row: {
           completed: boolean
@@ -330,6 +393,39 @@ export type Database = {
         }
         Relationships: []
       }
+      focus_plans: {
+        Row: {
+          brain_dump: string | null
+          created_at: string
+          date: string
+          id: string
+          tasks: Json
+          top_3: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brain_dump?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          tasks?: Json
+          top_3?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brain_dump?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          tasks?: Json
+          top_3?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       focus_sessions: {
         Row: {
           completed_at: string | null
@@ -369,39 +465,6 @@ export type Database = {
           task?: string | null
           user_id?: string
           xp_awarded?: number
-        }
-        Relationships: []
-      }
-      focus_plans: {
-        Row: {
-          brain_dump: string | null
-          created_at: string
-          date: string
-          id: string
-          tasks: Json
-          top_3: Json
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          brain_dump?: string | null
-          created_at?: string
-          date?: string
-          id?: string
-          tasks?: Json
-          top_3?: Json
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          brain_dump?: string | null
-          created_at?: string
-          date?: string
-          id?: string
-          tasks?: Json
-          top_3?: Json
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -453,6 +516,7 @@ export type Database = {
           slug: string
           sort_order: number
           updated_at: string
+          xp_reward: number
         }
         Insert: {
           active?: boolean
@@ -468,6 +532,7 @@ export type Database = {
           slug: string
           sort_order?: number
           updated_at?: string
+          xp_reward?: number
         }
         Update: {
           active?: boolean
@@ -483,6 +548,7 @@ export type Database = {
           slug?: string
           sort_order?: number
           updated_at?: string
+          xp_reward?: number
         }
         Relationships: []
       }
@@ -1581,6 +1647,66 @@ export type Database = {
           },
         ]
       }
+      user_preferences: {
+        Row: {
+          appear_in_milestones: boolean
+          community_activity: boolean
+          created_at: string
+          daily_reset_reminder: boolean
+          font_scale: number
+          garden_rewards: boolean
+          high_contrast: boolean
+          id: string
+          numi_memory: boolean
+          numi_personalization: boolean
+          private_journal: boolean
+          reduce_motion: boolean
+          reminder_time: string
+          show_nickname: boolean
+          streak_nudges: boolean
+          theme: string
+          updated_at: string
+        }
+        Insert: {
+          appear_in_milestones?: boolean
+          community_activity?: boolean
+          created_at?: string
+          daily_reset_reminder?: boolean
+          font_scale?: number
+          garden_rewards?: boolean
+          high_contrast?: boolean
+          id: string
+          numi_memory?: boolean
+          numi_personalization?: boolean
+          private_journal?: boolean
+          reduce_motion?: boolean
+          reminder_time?: string
+          show_nickname?: boolean
+          streak_nudges?: boolean
+          theme?: string
+          updated_at?: string
+        }
+        Update: {
+          appear_in_milestones?: boolean
+          community_activity?: boolean
+          created_at?: string
+          daily_reset_reminder?: boolean
+          font_scale?: number
+          garden_rewards?: boolean
+          high_contrast?: boolean
+          id?: string
+          numi_memory?: boolean
+          numi_personalization?: boolean
+          private_journal?: boolean
+          reduce_motion?: boolean
+          reminder_time?: string
+          show_nickname?: boolean
+          streak_nudges?: boolean
+          theme?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_rewards: {
         Row: {
           equipped: boolean
@@ -1751,6 +1877,7 @@ export type Database = {
         Returns: undefined
       }
       admin_user_detail: { Args: { p_user_id: string }; Returns: Json }
+      community_progress: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1887,10 +2014,12 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
     },
   },
 } as const
-

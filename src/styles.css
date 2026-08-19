@@ -298,3 +298,33 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Explicit "High contrast text" toggle (Settings → Accessibility). Applied to
+   the <html> element, boosting text/edge contrast on top of the active theme. */
+.high-contrast {
+  --foreground: oklch(0.16 0.06 262);
+  --card-foreground: oklch(0.16 0.06 262);
+  --popover-foreground: oklch(0.16 0.06 262);
+  --accent-foreground: oklch(0.16 0.06 262);
+  --muted-foreground: oklch(0.34 0.05 255);
+  --border: oklch(0.62 0.06 250);
+  --input: oklch(0.62 0.06 250);
+}
+.dark.high-contrast {
+  --foreground: oklch(0.98 0.01 250);
+  --card-foreground: oklch(0.98 0.01 250);
+  --popover-foreground: oklch(0.98 0.01 250);
+  --accent-foreground: oklch(0.95 0.03 250);
+  --muted-foreground: oklch(0.9 0.04 250);
+  --border: oklch(0.58 0.05 250);
+  --input: oklch(0.58 0.05 250);
+}
+
+/* Explicit "Reduce motion" toggle (Settings → Accessibility): mirrors the
+   system reduced-motion media query so the preference still applies when the
+   OS setting is off. */
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}

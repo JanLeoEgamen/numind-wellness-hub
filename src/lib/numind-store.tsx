@@ -14,7 +14,11 @@ import {
   getMyJournalStreak,
   getMyJournalEntryCount,
   claimDailyReward as serverClaimDailyReward,
+  getMySettings,
+  saveMySettings,
+  DEFAULT_SETTINGS,
 } from "./server-functions";
+import type { UserSettings } from "./server-functions";
 
 export type Celebration = {
   emoji: string;
@@ -32,8 +36,7 @@ type State = {
   gardenXp: number;
   completed: string[];
   claimedReward: boolean;
-  theme: "light" | "dark" | "system";
-  fontScale: number;
+  settings: UserSettings;
   celebration: Celebration | null;
   journalStreak: { currentStreak: number; longestStreak: number };
   journalEntryCount: number;
@@ -50,14 +53,27 @@ type Ctx = State & {
   completeTask: (id: string, opts?: { title?: string; xp?: number; chain?: string[] }) => void;
   awardXp: (xp: number, label: string) => void;
   claimDailyReward: () => void;
-  setTheme: (t: State["theme"]) => void;
+  setTheme: (t: UserSettings["theme"]) => void;
   setFontScale: (n: number) => void;
+  setSettings: (patch: Partial<UserSettings>) => void;
   celebrate: (c: Celebration) => void;
   dismissCelebration: () => void;
   isComplete: (id: string) => boolean;
 };
 
 const XP_PER_LEVEL = 2000;
+
+const SETTINGS_STORAGE_KEY = "numind-settings";
+
+function readLocalSettings(): Partial<UserSettings> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Partial<UserSettings>) : {};
+  } catch {
+    return {};
+  }
+}
 
 const NuMindContext = createContext<Ctx | null>(null);
 
@@ -70,24 +86,37 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
     gardenXp: 1340,
     completed: ["reset", "mindgym", "hydration"],
     claimedReward: false,
-    theme: "light",
-    fontScale: 100,
+    settings: { ...DEFAULT_SETTINGS, ...readLocalSettings() },
     celebration: null,
     journalStreak: { currentStreak: 0, longestStreak: 0 },
     journalEntryCount: 0,
   });
 
+  // Apply appearance + accessibility settings app-wide and keep them in sync.
   useEffect(() => {
     const root = document.documentElement;
-    const prefersDark =
-      typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-    const dark = state.theme === "dark" || (state.theme === "system" && prefersDark);
-    root.classList.toggle("dark", !!dark);
-  }, [state.theme]);
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const dark =
+        state.settings.theme === "dark" || (state.settings.theme === "system" && !!mq?.matches);
+      root.classList.toggle("dark", !!dark);
+    };
+    apply();
+    mq?.addEventListener("change", apply);
+    return () => mq?.removeEventListener("change", apply);
+  }, [state.settings.theme]);
 
   useEffect(() => {
-    document.documentElement.style.fontSize = `${state.fontScale}%`;
-  }, [state.fontScale]);
+    document.documentElement.style.fontSize = `${state.settings.fontScale}%`;
+  }, [state.settings.fontScale]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("high-contrast", state.settings.highContrast);
+  }, [state.settings.highContrast]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("reduce-motion", state.settings.reduceMotion);
+  }, [state.settings.reduceMotion]);
 
   // Hydrate the mock store from real backend stats (XP, level, streaks,
   // garden) once on mount. Ignored when not signed in / offline. Server totals
@@ -143,9 +172,50 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Hydrate persisted preferences once on mount. Local settings paint
+  // instantly (no flash), then the server row — the source of truth for a
+  // signed-in user — refines every field, so a change on another device shows
+  // up here too.
+  useEffect(() => {
+    let cancelled = false;
+    getMySettings()
+      .then((settings) => {
+        if (cancelled) return;
+        setState((s) => ({ ...s, settings: { ...s.settings, ...settings } }));
+      })
+      .catch(() => {
+        // Not authenticated or offline — keep the local/default settings.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const celebrate = useCallback((c: Celebration) => {
     setState((s) => ({ ...s, celebration: c }));
   }, []);
+
+  const setSettings = useCallback((patch: Partial<UserSettings>) => {
+    // Update in memory (fast, optimistic) and mirror to localStorage + backend.
+    setState((s) => {
+      const next = { ...s.settings, ...patch };
+      try {
+        window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Storage can be unavailable (private mode); settings still apply in-session.
+      }
+      return { ...s, settings: next };
+    });
+    // Best-effort persistence; the server row is re-hydrated on next mount.
+    saveMySettings({ data: { patch } }).catch(() => {});
+  }, []);
+
+  const setTheme = useCallback(
+    (theme: UserSettings["theme"]) => setSettings({ theme }),
+    [setSettings],
+  );
+
+  const setFontScale = useCallback((fontScale: number) => setSettings({ fontScale }), [setSettings]);
 
   const awardXp = useCallback((xp: number, label: string) => {
     setState((s) => ({ ...s, xp: s.xp + xp, gardenXp: s.gardenXp + Math.round(xp / 2) }));
@@ -210,6 +280,8 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
     );
     return {
       ...state,
+      theme: state.settings.theme,
+      fontScale: state.settings.fontScale,
       levelName: level.name,
       levelEmoji: level.emoji,
       xpInLevel: state.xp % XP_PER_LEVEL,
@@ -222,11 +294,12 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
       claimDailyReward,
       celebrate,
       dismissCelebration: () => setState((s) => ({ ...s, celebration: null })),
-      setTheme: (theme) => setState((s) => ({ ...s, theme })),
-      setFontScale: (fontScale) => setState((s) => ({ ...s, fontScale })),
+      setTheme,
+      setFontScale,
+      setSettings,
       isComplete: (id: string) => state.completed.includes(id),
     };
-  }, [state, completeTask, awardXp, claimDailyReward, celebrate]);
+  }, [state, completeTask, awardXp, claimDailyReward, celebrate, setSettings, setTheme, setFontScale]);
 
   return <NuMindContext.Provider value={value}>{children}</NuMindContext.Provider>;
 }

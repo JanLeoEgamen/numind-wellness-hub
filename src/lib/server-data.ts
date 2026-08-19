@@ -2,7 +2,7 @@
 // src/lib/server-functions.ts. Routes consume these instead of hand-rolling
 // query boilerplate. All of the wrapped functions are POST server functions
 // that return a promise of their document, so they plug straight into useQuery.
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getMyStats,
   getMyHabits,
@@ -21,8 +21,18 @@ import {
   getMyFocusPlan,
   getMyFocusHistory,
   getMyAnalytics,
+  getMySettings,
+  saveMySettings,
+  getRewardsMarketplace,
+  redeemReward,
+  equipReward,
+  getMyGames,
+  updateMyProfile,
+  getMyGoals,
+  addMyGoal,
+  completeMyGoal,
 } from "@/lib/server-functions";
-import type { NumiMessage } from "@/lib/server-functions";
+import type { NumiMessage, UserSettings, RewardsMarketplace, UpdateProfileInput } from "@/lib/server-functions";
 
 // Server functions return UUID primary keys; mock-data uses short slug ids.
 // Guard server writes with this so we never post a non-UUID to an FK column.
@@ -106,3 +116,77 @@ export function useMyFocusHistory() {
 export function useMyAnalytics() {
   return useQuery({ queryKey: ["myAnalytics"], queryFn: () => getMyAnalytics() });
 }
+
+
+export function useMySettings() {
+  return useQuery({ queryKey: ["mySettings"], queryFn: () => getMySettings() });
+}
+
+export function useSaveMySettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Partial<UserSettings>) => saveMySettings({ data: { patch } }),
+    onSuccess: (saved) => {
+      // Reflect the server's canonical row immediately for any other query.
+      queryClient.setQueryData(["mySettings"], saved);
+    },
+  });
+}
+
+export function useMyGames() {
+  return useQuery({ queryKey: ["myGames"], queryFn: () => getMyGames() });
+}
+
+
+export function useRewardsMarketplace() {
+  return useQuery({ queryKey: ["rewardsMarketplace"], queryFn: () => getRewardsMarketplace() });
+}
+
+export function useRedeemReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rewardId: string) => redeemReward({ data: { rewardId } }),
+    onSuccess: (data) => queryClient.setQueryData<RewardsMarketplace>(["rewardsMarketplace"], data),
+  });
+}
+
+export function useEquipReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rewardId: string | null) => equipReward({ data: { rewardId } }),
+    onSuccess: (data) => queryClient.setQueryData<RewardsMarketplace>(["rewardsMarketplace"], data),
+  });
+}
+
+
+export function useMyGoals() {
+  return useQuery({ queryKey: ["myGoals"], queryFn: () => getMyGoals() });
+}
+
+export function useUpdateMyProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: UpdateProfileInput) => updateMyProfile({ data: patch }),
+    onSuccess: () => {
+      // Profile fields flow through getMyStats (nickname/avatar/names) too.
+      queryClient.invalidateQueries({ queryKey: ["myStats"] });
+    },
+  });
+}
+
+export function useAddMyGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (title: string) => addMyGoal({ data: { title } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["myGoals"] }),
+  });
+}
+
+export function useCompleteMyGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => completeMyGoal({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["myGoals"] }),
+  });
+}
+
