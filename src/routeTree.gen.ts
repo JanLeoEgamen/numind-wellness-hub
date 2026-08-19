@@ -24,6 +24,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AppFocusRouteImport } from './routes/app.focus'
 import { Route as AppGardenRouteImport } from './routes/app.garden'
 import { Route as AppJournalRouteImport } from './routes/app.journal'
@@ -116,6 +117,11 @@ const TermsRoute = TermsRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFocusRoute = AppFocusRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/focus': typeof AppFocusRoute
   '/app/garden': typeof AppGardenRoute
   '/app/journal': typeof AppJournalRoute
@@ -258,6 +265,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/focus': typeof AppFocusRoute
   '/app/garden': typeof AppGardenRoute
   '/app/journal': typeof AppJournalRoute
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/focus': typeof AppFocusRoute
   '/app/garden': typeof AppGardenRoute
   '/app/journal': typeof AppJournalRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/terms'
+    | '/app/analytics'
     | '/app/focus'
     | '/app/garden'
     | '/app/journal'
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/terms'
+    | '/app/analytics'
     | '/app/focus'
     | '/app/garden'
     | '/app/journal'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/terms'
+    | '/app/analytics'
     | '/app/focus'
     | '/app/garden'
     | '/app/journal'
@@ -545,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/analytics': {
+      id: '/app/analytics'
+      path: '/analytics'
+      fullPath: '/app/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/focus': {
       id: '/app/focus'
       path: '/focus'
@@ -675,6 +694,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppFocusRoute: typeof AppFocusRoute
   AppGardenRoute: typeof AppGardenRoute
   AppJournalRoute: typeof AppJournalRoute
@@ -697,6 +717,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAnalyticsRoute: AppAnalyticsRoute,
   AppFocusRoute: AppFocusRoute,
   AppGardenRoute: AppGardenRoute,
   AppJournalRoute: AppJournalRoute,

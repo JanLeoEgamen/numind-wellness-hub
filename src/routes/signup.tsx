@@ -36,7 +36,7 @@ function SignupPage() {
       email: String(form.get("email") ?? ""),
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: `${window.location.origin}/onboarding`,
         data: {
           first_name: String(form.get("first_name") ?? ""),
           last_name: String(form.get("last_name") ?? ""),
@@ -73,8 +73,8 @@ function SignupPage() {
         <div className="grid gap-3 text-sm">
           <p className="text-base font-semibold">Check your inbox 🌱</p>
           <p className="text-muted-foreground">
-            We sent a confirmation link to your email. Click it and you'll land right back here, ready to plant your
-            first seed.
+            We sent a confirmation link to your email. Click it and we'll set up your first day together — your
+            goals, your avatar and your first seed.
           </p>
         </div>
       ) : (

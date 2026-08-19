@@ -44,7 +44,7 @@ function Landing() {
               Your everyday wellness companion for a healthier mind, stronger habits and better days.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link to="/onboarding" className="focus-ring rounded-full bg-brand px-7 py-3.5 text-base font-bold text-navy shadow-glow">Download NuMind</Link>
+              <Link to="/signup" className="focus-ring rounded-full bg-brand px-7 py-3.5 text-base font-bold text-navy shadow-glow">Get started free</Link>
               <Link to="/app" className="focus-ring rounded-full border border-border bg-surface px-7 py-3.5 text-base font-semibold">Explore NuMind</Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-2">

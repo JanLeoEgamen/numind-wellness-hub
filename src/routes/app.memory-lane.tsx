@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { MEMORIES } from "@/lib/mock-data";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   toggleMemoryFavorite,
   toggleMemoryPin,
@@ -48,17 +48,8 @@ const formatDate = (iso?: string) => {
 };
 
 function MemoryLane() {
+  const queryClient = useQueryClient();
   const { data: srvMemories } = useMyMemories();
-
-  const toView = (m: (typeof MEMORIES)[number], i: number): MemoryView => ({
-    id: m.id,
-    emoji: m.emoji,
-    title: m.title,
-    date: m.date,
-    tone: m.tone,
-    favorite: false,
-    pinned: false,
-  });
 
   const [favs, setFavs] = useState<string[]>(() =>
     (srvMemories ?? []).filter((m) => m.favorite).map((m) => m.id),
@@ -74,31 +65,40 @@ function MemoryLane() {
     setPins(srvMemories.filter((m) => m.pinned).map((m) => m.id));
   }, [srvMemories]);
 
-  // Prefer live memories; keep the warm mock fallback so the page is non-empty.
-  const list: MemoryView[] =
-    srvMemories && srvMemories.length
-      ? srvMemories.map((m, i) => ({
-          id: m.id,
-          emoji: m.emoji ?? "🌸",
-          title: m.title,
-          description: m.description ?? undefined,
-          date: formatDate(m.created_at),
-          tone: toneFor(m.memory_type, i),
-          favorite: m.favorite ?? false,
-          pinned: m.pinned ?? false,
-        }))
-      : MEMORIES.map(toView);
+  const list: MemoryView[] = (srvMemories ?? []).map((m, i) => ({
+    id: m.id,
+    emoji: m.emoji ?? "🌸",
+    title: m.title,
+    description: m.description ?? undefined,
+    date: formatDate(m.created_at),
+    tone: toneFor(m.memory_type, i),
+    favorite: m.favorite ?? false,
+    pinned: m.pinned ?? false,
+  }));
+
+  const syncAfterToggle = () => {
+    // Pull the freshest flags so pin ordering and hearts stay in sync.
+    queryClient.invalidateQueries({ queryKey: ["myMemories"] });
+  };
 
   const toggleFav = (m: MemoryView) => {
     const on = !favs.includes(m.id);
     setFavs((f) => (on ? [...f, m.id] : f.filter((x) => x !== m.id)));
-    if (isUuid(m.id)) toggleMemoryFavorite({ data: { memoryId: m.id, favorite: on } }).catch(() => {});
+    if (isUuid(m.id)) {
+      toggleMemoryFavorite({ data: { memoryId: m.id, favorite: on } })
+        .catch(() => {})
+        .then(syncAfterToggle);
+    }
   };
 
   const togglePin = (m: MemoryView) => {
     const on = !pins.includes(m.id);
     setPins((p) => (on ? [...p, m.id] : p.filter((x) => x !== m.id)));
-    if (isUuid(m.id)) toggleMemoryPin({ data: { memoryId: m.id, pinned: on } }).catch(() => {});
+    if (isUuid(m.id)) {
+      toggleMemoryPin({ data: { memoryId: m.id, pinned: on } })
+        .catch(() => {})
+        .then(syncAfterToggle);
+    }
   };
 
   const ordered = [...list].sort((a, b) =>
@@ -110,8 +110,8 @@ function MemoryLane() {
       <PageHeader emoji="🌸" title="Look How Far You've Come" subtitle="Your milestones, gathered in one warm place." />
 
       <ul className="mt-6 grid gap-3">
-        {ordered.length === 0 ? (
-          <EmptyState emoji="🌱" title="No memories yet" message="Complete your first Daily Reset and your first milestone will appear here." />
+        {srvMemories === undefined ? null : ordered.length === 0 ? (
+          <EmptyState emoji="🌱" title="No memories yet" message="Your memories will appear here as you grow." />
         ) : (
           ordered.map((m) => (
             <li key={m.id}>

@@ -33,6 +33,7 @@ const MORE = [
   { to: "/app/together", emoji: "💙", label: "Together" },
   { to: "/app/learning", emoji: "🎓", label: "Learning Lounge" },
   { to: "/app/journey", emoji: "✨", label: "My Journey" },
+  { to: "/app/analytics", emoji: "📊", label: "My Analytics" },
   { to: "/app/rewards", emoji: "🎁", label: "Rewards" },
   { to: "/app/garden", emoji: "🌱", label: "My Garden" },
   { to: "/app/focus", emoji: "⚡", label: "Focus Zone" },

@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNuMind } from "@/lib/numind-store";
-import { TODAYS_JOURNEY, USER, MEMORIES } from "@/lib/mock-data";
-import { useMyStats } from "@/lib/server-data";
+import { TODAYS_JOURNEY, USER } from "@/lib/mock-data";
+import { useMyMemories, useMyStats } from "@/lib/server-data";
+import { cn } from "@/lib/utils";
 import {
   ProgressRing,
   ProgressBar,
@@ -27,14 +30,22 @@ export const Route = createFileRoute("/app/")({
 });
 
 function Home() {
-  const profile = useMyStats().data?.profile;
+  const statsQuery = useMyStats();
+  const profile = statsQuery.data?.profile;
+  const { data: srvMemories } = useMyMemories();
+  const queryClient = useQueryClient();
   const firstName =
     profile?.nickname ?? profile?.firstName ?? profile?.lastName ?? USER.name;
+
+  // Refetch stats on Home mount so the "Today's Journey" checklist reflects the
+  // latest real server activity (reset, mind gym, focus, habits, journal).
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ["myStats"] });
+  }, [queryClient]);
+
   const {
-    completed,
     totalTasks,
     isComplete,
-    completeTask,
     streak,
     xp,
     xpInLevel,
@@ -49,7 +60,18 @@ function Home() {
     claimDailyReward,
   } = useNuMind();
 
-  const done = TODAYS_JOURNEY.filter((t) => isComplete(t.id)).length;
+  const todayDone = statsQuery.data?.todayDone;
+  // Truth = real server activity today, merged with anything just completed in
+  // this session (e.g. reset/journal) before the refetch lands.
+  const isDone = (id: string) => isComplete(id) || !!todayDone?.[id as keyof typeof todayDone];
+  const done = TODAYS_JOURNEY.filter((t) => isDone(t.id)).length;
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 18) return "Good afternoon";
+    return "Good evening";
+  })();
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -57,7 +79,7 @@ function Home() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">
-              <span aria-hidden>🌞</span> Good morning, {firstName}!
+              <span aria-hidden>🌞</span> {greeting}, {firstName}!
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Small steps count. You have {totalTasks - done} things waiting whenever you're ready.
@@ -100,11 +122,11 @@ function Home() {
             <h2 id="journey" className="text-lg font-bold sm:text-xl">
               Today's Journey
             </h2>
-            <span className="text-xs text-muted-foreground">{completed.length} completed today</span>
+            <span className="text-xs text-muted-foreground">{done} completed today</span>
           </div>
           <ul className="grid gap-3">
             {TODAYS_JOURNEY.map((t) => {
-              const done = isComplete(t.id);
+              const taskDone = isDone(t.id);
               return (
                 <li key={t.id}>
                   <div className="card-soft hover-lift flex items-center gap-4 p-4">
@@ -112,7 +134,7 @@ function Home() {
                     <div className="min-w-0 flex-1">
                       <p className="flex flex-wrap items-center gap-2 font-semibold">
                         {t.title}
-                        {done ? (
+                        {taskDone ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-mint/40 px-2 py-0.5 text-[11px] font-semibold">
                             ✓ Complete
                           </span>
@@ -122,18 +144,17 @@ function Home() {
                       </p>
                       <p className="truncate text-sm text-muted-foreground">{t.description}</p>
                     </div>
-                    {done ? (
-                      <Link to={t.to} className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold">
-                        View
-                      </Link>
-                    ) : (
-                      <button
-                        onClick={() => completeTask(t.id)}
-                        className="focus-ring rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy transition hover:brightness-105"
-                      >
-                        Start
-                      </button>
-                    )}
+                    <Link
+                      to={t.to}
+                      className={cn(
+                        "focus-ring rounded-full px-4 py-2 text-sm",
+                        taskDone
+                          ? "bg-muted font-semibold"
+                          : "bg-brand font-bold text-navy transition hover:brightness-105",
+                      )}
+                    >
+                      {taskDone ? "View" : "Start"}
+                    </Link>
                   </div>
                 </li>
               );
@@ -150,7 +171,9 @@ function Home() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{gardenStage.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Recently unlocked: Butterfly Flock 🦋
+                    {gardenNext
+                      ? `${Math.max(0, gardenNext.threshold - gardenXp)} XP to the next stage`
+                      : "Your garden is fully grown!"}
                   </p>
                   {gardenNext ? (
                     <>
@@ -210,12 +233,12 @@ function Home() {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => completeTask("reset")}
-                className="focus-ring flex-1 rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy"
+              <Link
+                to="/app/reset"
+                className="focus-ring flex-1 rounded-full bg-brand px-4 py-2 text-center text-sm font-bold text-navy"
               >
                 Let's Go
-              </button>
+              </Link>
               <CTALink to="/app/numi" variant="ghost" className="flex-1">
                 Talk to Numi
               </CTALink>
@@ -228,9 +251,15 @@ function Home() {
           <SoftCard>
             <SectionTitle>🌸 Memory Lane</SectionTitle>
             <p className="text-sm font-semibold">Look how far you've come!</p>
-            <p className="mt-1 text-sm text-muted-foreground">{MEMORIES[0]?.title}</p>
+            {srvMemories && srvMemories.length ? (
+              <p className="mt-1 text-sm text-muted-foreground">{srvMemories[0]?.title}</p>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your milestones will appear as you build your streak.
+              </p>
+            )}
             <CTALink to="/app/memory-lane" variant="soft" className="mt-4 w-full">
-              View Journey
+              Memory Lane
             </CTALink>
           </SoftCard>
 

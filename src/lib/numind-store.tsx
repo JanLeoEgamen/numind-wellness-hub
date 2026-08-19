@@ -98,6 +98,11 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
     getMyStats()
       .then((stats) => {
         if (cancelled) return;
+        // Today's Journey is backed by real server activity (daily reset, mind
+        // gym, focus, habit logs, journal), so it survives a refresh.
+        const doneIds = (["reset", "mindgym", "focus", "hydration", "win"] as const).filter(
+          (id) => stats.todayDone[id],
+        );
         setState((s) => ({
           ...s,
           xp: stats.xpTotal,
@@ -105,11 +110,8 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
           streak: stats.currentStreak,
           longestStreak: stats.longestStreak,
           gardenXp: stats.garden ? stats.garden.growthPoints : s.gardenXp,
-          completed: stats.todayCompleted
-            ? s.completed.includes("reset")
-              ? s.completed
-              : [...s.completed, "reset"]
-            : s.completed,
+          claimedReward: stats.dailyRewardClaimed || s.claimedReward,
+          completed: s.completed.length ? [...new Set([...s.completed, ...doneIds])] : doneIds,
         }));
       })
       .catch(() => {

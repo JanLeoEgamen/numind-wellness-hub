@@ -121,7 +121,7 @@ export function PricingCards({ annual = false, plans }: { annual?: boolean; plan
                 <li key={f} className="flex gap-2"><span className="text-teal" aria-hidden>✓</span>{f}</li>
               ))}
             </ul>
-            <Link to="/onboarding" className={`focus-ring mt-6 rounded-full px-5 py-3 text-center text-sm font-bold ${p.popular ? "bg-brand text-navy" : "bg-muted hover:bg-accent"}`}>
+            <Link to="/signup" className={`focus-ring mt-6 rounded-full px-5 py-3 text-center text-sm font-bold ${p.popular ? "bg-brand text-navy" : "bg-muted hover:bg-accent"}`}>
               {p.monthly === 0 ? "Start free" : `Choose ${p.name}`}
             </Link>
           </div>

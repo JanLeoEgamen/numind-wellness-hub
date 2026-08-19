@@ -10,12 +10,19 @@ import {
   getMyNotifications,
   getMyGarden,
   getCommunityFeed,
+  getCommunityStats,
   getMyBadges,
   getMindGymActivities,
   getLearningCatalog,
   getMyQuests,
   getMyMemories,
+  getMyNumiConversations,
+  getNumiConversationMessages,
+  getMyFocusPlan,
+  getMyFocusHistory,
+  getMyAnalytics,
 } from "@/lib/server-functions";
+import type { NumiMessage } from "@/lib/server-functions";
 
 // Server functions return UUID primary keys; mock-data uses short slug ids.
 // Guard server writes with this so we never post a non-UUID to an FK column.
@@ -46,6 +53,10 @@ export function useCommunityFeed() {
   return useQuery({ queryKey: ["communityFeed"], queryFn: () => getCommunityFeed() });
 }
 
+export function useCommunityStats() {
+  return useQuery({ queryKey: ["communityStats"], queryFn: () => getCommunityStats() });
+}
+
 export function useMyBadges() {
   return useQuery({ queryKey: ["myBadges"], queryFn: () => getMyBadges() });
 }
@@ -64,4 +75,34 @@ export function useMyQuests() {
 
 export function useMyMemories() {
   return useQuery({ queryKey: ["myMemories"], queryFn: () => getMyMemories() });
+}
+
+export function useMyNumiConversations() {
+  return useQuery({ queryKey: ["myNumiConversations"], queryFn: () => getMyNumiConversations() });
+}
+
+export function useNumiConversationMessages(conversationId?: string | null) {
+  return useQuery<NumiMessage[]>({
+    queryKey: ["numiConversationMessages", conversationId ?? "none"],
+    queryFn: () =>
+      conversationId
+        ? getNumiConversationMessages({ data: { conversationId } })
+        : Promise.resolve([]),
+    enabled: !!conversationId,
+  });
+}
+
+export function useMyFocusPlan(date?: string | null) {
+  return useQuery({
+    queryKey: ["myFocusPlan", date ?? "today"],
+    queryFn: () => getMyFocusPlan({ data: { date: date ?? null } }),
+  });
+}
+
+export function useMyFocusHistory() {
+  return useQuery({ queryKey: ["myFocusHistory"], queryFn: () => getMyFocusHistory() });
+}
+
+export function useMyAnalytics() {
+  return useQuery({ queryKey: ["myAnalytics"], queryFn: () => getMyAnalytics() });
 }

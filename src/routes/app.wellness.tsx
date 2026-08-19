@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { HABITS } from "@/lib/mock-data";
 import { useNuMind } from "@/lib/numind-store";
-import { logHabit, awardXp as serverAwardXp, toggleHabitFavorite } from "@/lib/server-functions";
+import { logHabit, toggleHabitFavorite } from "@/lib/server-functions";
 import { useMyHabits, isUuid } from "@/lib/server-data";
 import {
   PageHeader,
@@ -112,22 +112,26 @@ function WellnessPage() {
     );
     if (delta < 0) return;
     const next = item.value + delta;
-    // Only talk to the backend when we're holding a real server habit id.
+
+    // With a real server habit, the backend owns the goal reward: it banks XP
+    // once per day (keyed on "<habitId>:<date>") and reports how much it
+    // actually awarded. We mirror that into the live store so the +20 only
+    // shows up when it has been persisted — keeping the number honest after a
+    // refresh.
     if (isUuid(item.id)) {
-      logHabit({ data: { habitId: item.id, value: 1 } }).catch(() => {});
+      logHabit({ data: { habitId: item.id, value: 1 } })
+        .then((result) => {
+          if (result.xpAwarded > 0) {
+            awardXp(result.xpAwarded, `${item.name} goal reached`);
+          }
+        })
+        .catch(() => {});
+      return;
     }
+
+    // Mock habit (no server row yet): keep the old client-side behaviour.
     if (next === item.goal) {
       awardXp(20, `${item.name} goal reached`);
-      if (isUuid(item.id)) {
-        serverAwardXp({
-          data: {
-            amount: 20,
-            sourceType: "habit_goal",
-            sourceId: item.id,
-            description: `${item.name} goal reached`,
-          },
-        }).catch(() => {});
-      }
     }
   };
 

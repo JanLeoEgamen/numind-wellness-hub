@@ -1,8 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { USER } from "@/lib/mock-data";
-import { useMyStats } from "@/lib/server-data";
+import {
+  useMyStats,
+  useMyNumiConversations,
+  useNumiConversationMessages,
+} from "@/lib/server-data";
+import {
+  archiveNumiConversation,
+  newNumiConversation,
+  sendNumiMessage,
+} from "@/lib/server-functions";
 import { NumiAvatar, PageHeader, DisclaimerNote } from "@/components/numind/ui-kit";
+import { useNuMind } from "@/lib/numind-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/numi")({
@@ -25,89 +36,159 @@ export const Route = createFileRoute("/app/numi")({
 });
 
 const QUICK = [
-  {
-    emoji: "😊",
-    label: "Motivate Me",
-    reply:
-      "You've shown up 12 days in a row. That's not luck — that's you choosing yourself, repeatedly. One small thing today is plenty.",
-  },
-  {
-    emoji: "🧘",
-    label: "Help Me Relax",
-    reply:
-      "Let's do 60 seconds of breathing together. In for 4, hold for 4, out for 6. I'll be right here when you're done. 🌬",
-  },
-  {
-    emoji: "⚡",
-    label: "Help Me Focus",
-    reply:
-      "Try a 15-minute Focus Sprint. Pick one task, silence the rest, and I'll keep the timer. Want me to start it?",
-  },
-  {
-    emoji: "🎯",
-    label: "Help Me Set a Goal",
-    reply:
-      'Let\'s make it small and specific: "Walk 15 minutes after lunch, 4 days this week." Want me to add it to your Quest?',
-  },
-  {
-    emoji: "📅",
-    label: "Plan My Day",
-    reply:
-      "Top 3 for today: 1) Daily Reset 2) One focus sprint on the report 3) A short walk outside. Everything else is a bonus.",
-  },
-  {
-    emoji: "💭",
-    label: "Journal With Me",
-    reply: "Here's a prompt: what's one thing that went better than you expected this week?",
-  },
-  {
-    emoji: "🌟",
-    label: "Celebrate My Progress",
-    reply:
-      "This month: 31 Mind Gym sessions, 19 journal entries and a garden that went from Flower to Tree. Look at that. 🌳",
-  },
-  {
-    emoji: "🌙",
-    label: "Help Me Wind Down",
-    reply:
-      "Screens down, lights low, and the Evening Wind Down in Mind Gym. Six minutes and your brain gets the hint.",
-  },
+  { emoji: "😊", label: "Motivate Me", intent: "motivate" },
+  { emoji: "🧘", label: "Help Me Relax", intent: "relax" },
+  { emoji: "⚡", label: "Help Me Focus", intent: "focus" },
+  { emoji: "🎯", label: "Help Me Set a Goal", intent: "goal" },
+  { emoji: "📅", label: "Plan My Day", intent: "plan" },
+  { emoji: "💭", label: "Journal With Me", intent: "journal" },
+  { emoji: "🌟", label: "Celebrate My Progress", intent: "celebrate" },
+  { emoji: "🌙", label: "Help Me Wind Down", intent: "wind_down" },
 ];
 
-type Msg = { id: number; from: "numi" | "user"; text: string };
+type Msg = { id: string; from: "numi" | "user"; text: string; source?: string | undefined };
+
+// Pull the reply source out of a message's metadata without assuming its shape.
+function msgSource(metadata: unknown): string | undefined {
+  if (metadata && typeof metadata === "object" && "source" in metadata) {
+    const s = (metadata as { source?: unknown }).source;
+    return typeof s === "string" ? s : undefined;
+  }
+  return undefined;
+}
 
 function NumiPage() {
   const stats = useMyStats();
   const name = stats.data?.profile?.firstName ?? USER.name;
-  const [messages, setMessages] = useState<Msg[]>([
-    { id: 1, from: "numi", text: `Hi ${name}! What can I help you with today?` },
-  ]);
+  const queryClient = useQueryClient();
+  const { awardXp } = useNuMind();
+
+  const { data: conversations, refetch: refetchConversations } = useMyNumiConversations();
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const messagesQuery = useNumiConversationMessages(conversationId);
+
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const primedRef = useRef<string | null>(null);
+  const creatingRef = useRef(false);
+
+  // Auto-select the most recent conversation, or create the first one.
+  useEffect(() => {
+    if (conversationId || !conversations || creatingRef.current) return;
+    if (conversations.length > 0) {
+      primedRef.current = null;
+      setConversationId(conversations[0]!.id);
+      return;
+    }
+    creatingRef.current = true;
+    newNumiConversation()
+      .then((c) => {
+        primedRef.current = c.id;
+        setConversationId(c.id);
+        refetchConversations();
+      })
+      .catch(() => {
+        setMessages([
+          { id: "welcome", from: "numi", text: `Hi ${name}! What can I help you with today?` },
+        ]);
+      })
+      .finally(() => {
+        creatingRef.current = false;
+      });
+  }, [conversations, conversationId, name, refetchConversations]);
+
+  // Load persisted history once per conversation (then local state takes over).
+  useEffect(() => {
+    if (!conversationId || primedRef.current === conversationId) return;
+    if (!messagesQuery.isFetched) return;
+    const rows = messagesQuery.data ?? [];
+    setMessages(
+      rows.length > 0
+        ? rows.map((m) => ({
+            id: m.id,
+            from: m.role === "user" ? "user" : "numi",
+            text: m.content,
+            source: msgSource(m.metadata),
+          }))
+        : [{ id: "welcome", from: "numi", text: `Hi ${name}! What can I help you with today?` }],
+    );
+    primedRef.current = conversationId;
+  }, [conversationId, messagesQuery.isFetched, messagesQuery.data, name]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  function send(text: string, reply?: string) {
-    if (!text.trim()) return;
-    setMessages((m) => [...m, { id: Date.now(), from: "user", text }]);
+  function switchConversation(id: string) {
+    if (id === conversationId || typing) return;
+    primedRef.current = null;
+    setConversationId(id);
+    setMessages([]);
+  }
+
+  async function send(text: string, intent?: string) {
+    if (!text.trim() || typing) return;
+    const trimmed = text.trim();
+    setMessages((m) => [...m, { id: `user-${Date.now()}`, from: "user", text: trimmed }]);
     setInput("");
     setTyping(true);
-    window.setTimeout(() => {
-      setTyping(false);
+    try {
+      let cid = conversationId;
+      if (!cid) {
+        const created = await newNumiConversation();
+        cid = created.id;
+        primedRef.current = cid;
+        setConversationId(cid);
+        refetchConversations();
+      }
+      const result = await sendNumiMessage({
+        data: { conversationId: cid, message: trimmed, intent: intent ?? null },
+      });
+      setMessages((m) => [
+        ...m,
+        { id: `numi-${Date.now()}`, from: "numi", text: result.reply, source: result.replySource },
+      ]);
+      primedRef.current = result.conversationId;
+      if (result.xpAwarded > 0) awardXp(result.xpAwarded, "Checked in with Numi");
+      queryClient.invalidateQueries({ queryKey: ["numiConversationMessages"] });
+      refetchConversations();
+    } catch (err) {
+      console.error("[Numi] send failed:", err);
       setMessages((m) => [
         ...m,
         {
-          id: Date.now() + 1,
+          id: `numi-err-${Date.now()}`,
           from: "numi",
-          text:
-            reply ??
-            "I hear you. Let's keep it small: pick one thing from Today's Journey and I'll cheer you on. 🌱",
+          text: "I couldn't reach myself just now — give me a moment and try again. 🌱",
         },
       ]);
-    }, 900);
+    } finally {
+      setTyping(false);
+    }
+  }
+
+  async function startNewChat() {
+    if (typing) return;
+    try {
+      const created = await newNumiConversation();
+      primedRef.current = created.id;
+      setConversationId(created.id);
+      setMessages([]);
+      refetchConversations();
+    } catch {
+      setMessages([
+        { id: "welcome", from: "numi", text: `Fresh start, ${name}. What's on your mind?` },
+      ]);
+    }
+  }
+
+  async function clearConversation() {
+    if (!conversationId || typing) return;
+    await archiveNumiConversation({ data: { conversationId } }).catch(() => {});
+    refetchConversations();
+    await startNewChat();
   }
 
   return (
@@ -117,18 +198,46 @@ function NumiPage() {
         title="Meet Numi"
         subtitle="Your AI wellness companion — here to motivate, support, organize and celebrate."
         action={
-          <button
-            onClick={() =>
-              setMessages([
-                { id: 1, from: "numi", text: `Fresh start, ${name}. What's on your mind?` },
-              ])
-            }
-            className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-accent"
-          >
-            Clear conversation
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={startNewChat}
+              className="focus-ring rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy"
+            >
+              + New chat
+            </button>
+            <button
+              onClick={clearConversation}
+              disabled={!conversationId}
+              className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-accent disabled:opacity-50"
+            >
+              Clear
+            </button>
+          </div>
         }
       />
+
+      {conversations && conversations.length > 0 ? (
+        <div
+          className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1"
+          aria-label="Your conversations"
+        >
+          {conversations.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => switchConversation(c.id)}
+              title={c.title}
+              className={cn(
+                "focus-ring max-w-[180px] shrink-0 truncate rounded-full border px-3.5 py-1.5 text-xs font-medium",
+                c.id === conversationId
+                  ? "border-brand bg-brand/10 text-foreground"
+                  : "border-border bg-card hover:bg-accent",
+              )}
+            >
+              💬 {c.title}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="card-soft flex min-h-[52vh] flex-col p-4 sm:p-6">
         <ul className="flex-1 space-y-4">
@@ -146,7 +255,7 @@ function NumiPage() {
               )}
               <div
                 className={cn(
-                  "animate-rise max-w-[80%] rounded-3xl px-4 py-3 text-sm",
+                  "animate-rise max-w-[80%] whitespace-pre-wrap rounded-3xl px-4 py-3 text-sm",
                   m.from === "numi" ? "bg-muted/70" : "bg-brand text-navy",
                 )}
               >
@@ -178,7 +287,7 @@ function NumiPage() {
           {QUICK.map((q) => (
             <button
               key={q.label}
-              onClick={() => send(q.label, q.reply)}
+              onClick={() => send(q.label, q.intent)}
               className="focus-ring shrink-0 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-medium hover:bg-accent"
             >
               <span aria-hidden>{q.emoji}</span> {q.label}
@@ -201,9 +310,13 @@ function NumiPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Tell Numi how today is going…"
-            className="focus-ring flex-1 rounded-full border border-border bg-background px-4 py-3 text-sm"
+            disabled={typing}
+            className="focus-ring flex-1 rounded-full border border-border bg-background px-4 py-3 text-sm disabled:opacity-60"
           />
-          <button className="focus-ring rounded-full bg-brand px-5 py-3 text-sm font-bold text-navy">
+          <button
+            disabled={!input.trim() || typing}
+            className="focus-ring rounded-full bg-brand px-5 py-3 text-sm font-bold text-navy disabled:opacity-60"
+          >
             Send
           </button>
         </form>
@@ -212,7 +325,8 @@ function NumiPage() {
       <div className="mt-4">
         <DisclaimerNote>
           Numi is an AI wellness companion, not a healthcare professional. Numi does not provide
-          medical advice, diagnosis or treatment. This is a demo experience with mock conversations.
+          medical advice, diagnosis or treatment. Replies are generated by AI and are for
+          motivation and support only.
         </DisclaimerNote>
       </div>
     </div>

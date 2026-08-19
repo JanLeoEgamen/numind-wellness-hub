@@ -1,13 +1,16 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
-import { supabase } from "@/integrations/supabase/client";
+import { getAuthenticatedUser, getOnboardingCompleted } from "@/lib/auth-guard";
 
 export const Route = createFileRoute("/app")({
   ssr: false,
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/login" });
-    return { user: data.user };
+    const user = await getAuthenticatedUser();
+    if (!user) throw redirect({ to: "/login" });
+    // First-login onboarding gate: new users finish onboarding before the app.
+    const completed = await getOnboardingCompleted(user.id);
+    if (!completed) throw redirect({ to: "/onboarding" });
+    return { user };
   },
   head: () => ({
     meta: [

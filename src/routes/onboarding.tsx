@@ -1,9 +1,23 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Confetti, NumiAvatar, ProgressBar, DisclaimerNote } from "@/components/numind/ui-kit";
 import { cn } from "@/lib/utils";
+import { completeOnboarding } from "@/lib/server-functions";
+import { getAuthenticatedUser, getOnboardingCompleted } from "@/lib/auth-guard";
 
 export const Route = createFileRoute("/onboarding")({
+  ssr: false,
+  beforeLoad: async () => {
+    // Onboarding runs after email verification or first login, so it requires
+    // a session. Users who already finished onboarding are sent straight to app.
+    const user = await getAuthenticatedUser();
+    if (!user) throw redirect({ to: "/login" });
+    const completed = await getOnboardingCompleted(user.id);
+    if (completed) throw redirect({ to: "/app" });
+    return { user };
+  },
   head: () => ({
     meta: [
       { title: "Get started — NuMind" },
@@ -21,12 +35,29 @@ const AVATARS = ["🌷","🌻","🦊","🐢","🌊","🍀","🐦","🌙"];
 const TIMES = ["Morning","Afternoon","Evening","Custom"];
 
 function Onboarding() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [areas, setAreas] = useState<string[]>([]);
   const [goals, setGoals] = useState<string[]>([]);
   const [avatar, setAvatar] = useState("🌷");
   const [time, setTime] = useState("Morning");
   const total = 7;
+
+  const finish = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await completeOnboarding({ data: { avatar, goals } });
+      // Reflect the fresh avatar / completion flag immediately in the app.
+      queryClient.invalidateQueries({ queryKey: ["myStats"] });
+      navigate({ to: "/app" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setSaving(false);
+    }
+  };
 
   const toggle = (list: string[], set: (v: string[]) => void, v: string, max?: number) => {
     if (list.includes(v)) set(list.filter((x) => x !== v));
@@ -130,7 +161,13 @@ function Onboarding() {
               {step === 0 ? "Start My Journey" : "Continue"}
             </button>
           ) : (
-            <Link to="/app" className="focus-ring flex-1 rounded-full bg-brand px-5 py-3 text-center text-sm font-bold text-navy">Enter NuMind</Link>
+            <button
+              onClick={finish}
+              disabled={saving}
+              className="focus-ring flex-1 rounded-full bg-brand px-5 py-3 text-center text-sm font-bold text-navy disabled:opacity-60"
+            >
+              {saving ? "Planting your seed…" : "Enter NuMind"}
+            </button>
           )}
         </div>
       </div>

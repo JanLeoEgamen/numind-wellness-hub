@@ -10,6 +10,8 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, Json } from "@/integrations/supabase/types";
 
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -35,6 +37,14 @@ export type MyStats = {
   longestStreak: number;
   garden: { growthPoints: number; stage: number; theme: string } | null;
   todayCompleted: boolean;
+  todayDone: {
+    reset: boolean;
+    mindgym: boolean;
+    focus: boolean;
+    hydration: boolean;
+    win: boolean;
+  };
+  dailyRewardClaimed: boolean;
 };
 
 export const getMyStats = createServerFn({ method: "POST" })
@@ -43,28 +53,58 @@ export const getMyStats = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const today = toDateKey(new Date());
 
-    const [profileRes, xpRes, resetRes, gardenRes, levelsRes] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select(
-          "id, first_name, last_name, nickname, avatar, preferred_motivational_style, onboarding_completed",
-        )
-        .eq("id", userId)
-        .maybeSingle(),
-      supabase.from("xp_transactions").select("amount").eq("user_id", userId),
-      supabase
-        .from("daily_resets")
-        .select("completed")
-        .eq("user_id", userId)
-        .eq("date", today)
-        .maybeSingle(),
-      supabase
-        .from("gardens")
-        .select("stage, growth_points, theme")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      supabase.from("levels").select("level_number, name, tagline, xp_required, emoji").order("xp_required"),
-    ]);
+    const [profileRes, xpRes, resetRes, gardenRes, levelsRes, mindRes, focusRes, habitRes, journalRes, rewardRes] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select(
+            "id, first_name, last_name, nickname, avatar, preferred_motivational_style, onboarding_completed",
+          )
+          .eq("id", userId)
+          .maybeSingle(),
+        supabase.from("xp_transactions").select("amount").eq("user_id", userId),
+        supabase
+          .from("daily_resets")
+          .select("completed")
+          .eq("user_id", userId)
+          .eq("date", today)
+          .maybeSingle(),
+        supabase
+          .from("gardens")
+          .select("stage, growth_points, theme")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        supabase.from("levels").select("level_number, name, tagline, xp_required, emoji").order("xp_required"),
+        // Today's real activity, so the Home "Today's Journey" checklist is
+        // truthful and survives a refresh instead of living only in-session.
+        supabase
+          .from("mind_gym_completions")
+          .select("id")
+          .eq("user_id", userId)
+          .gte("completed_at", `${today}T00:00:00`)
+          .lt("completed_at", `${today}T23:59:59`),
+        supabase
+          .from("focus_sessions")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("status", "completed")
+          .gte("completed_at", `${today}T00:00:00`)
+          .lt("completed_at", `${today}T23:59:59`),
+        supabase.from("habit_logs").select("id").eq("user_id", userId).eq("date", today),
+        supabase
+          .from("journal_entries")
+          .select("id")
+          .eq("user_id", userId)
+          .gte("created_at", `${today}T00:00:00`)
+          .lt("created_at", `${today}T23:59:59`),
+        supabase
+          .from("xp_transactions")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("source_type", "daily_reward")
+          .gte("created_at", `${today}T00:00:00`)
+          .lt("created_at", `${today}T23:59:59`),
+      ]);
 
     const profileRows = profileRes.data;
     const xpRows = xpRes.data ?? [];
@@ -120,6 +160,11 @@ export const getMyStats = createServerFn({ method: "POST" })
       if (run > longest) longest = run;
     }
 
+    const mindToday = (mindRes.data?.length ?? 0) > 0;
+    const focusToday = (focusRes.data?.length ?? 0) > 0;
+    const hydrationToday = (habitRes.data?.length ?? 0) > 0;
+    const winToday = (journalRes.data?.length ?? 0) > 0;
+
     return {
       profile: profileRows
         ? {
@@ -149,6 +194,14 @@ export const getMyStats = createServerFn({ method: "POST" })
           }
         : null,
       todayCompleted: resetRes.data?.completed ?? false,
+      todayDone: {
+        reset: resetRes.data?.completed ?? false,
+        mindgym: mindToday,
+        focus: focusToday,
+        hydration: hydrationToday,
+        win: winToday,
+      },
+      dailyRewardClaimed: (rewardRes.data?.length ?? 0) > 0,
     };
   });
 
@@ -252,22 +305,56 @@ export const submitDailyReset = createServerFn({ method: "POST" })
     const date = data.date ?? toDateKey(new Date());
 
     // First-ever Daily Reset becomes a keepsake memory.
-    const ensureResetMemory = async () => {
-      const { data: existing } = await supabase
-        .from("memories")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("source_type", "daily_reset")
-        .limit(1);
-      if ((existing ?? []).length) return;
-      await supabase.from("memories").insert({
-        user_id: userId,
-        memory_type: "milestone",
+    const ensureResetMemory = async (resetId?: string) => {
+      await insertMemoryIfAbsent(supabase, userId, {
+        memoryType: "milestone",
         title: "Your first Daily Reset",
         description: `You showed up on ${date} — that was the first step.`,
-        source_type: "daily_reset",
+        sourceType: "daily_reset",
+        sourceId: resetId ?? null,
         emoji: "🌞",
       });
+    };
+
+    // Consecutive-streak keepsakes (7 / 30 / 100 days) from real resets.
+    const ensureStreakMemory = async (resetId: string) => {
+      const { data: completedRows } = await supabase
+        .from("daily_resets")
+        .select("date")
+        .eq("user_id", userId)
+        .eq("completed", true)
+        .order("date", { ascending: false })
+        .limit(400);
+      const dateSet = new Set((completedRows ?? []).map((r) => r.date));
+      const todayKey = toDateKey(new Date());
+      const yesterday = new Date(todayKey);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const walked = dateSet.has(todayKey)
+        ? new Date(todayKey)
+        : dateSet.has(toDateKey(yesterday))
+          ? new Date(yesterday)
+          : null;
+
+      let streak = 0;
+      let cursor = walked;
+      while (cursor) {
+        if (!dateSet.has(toDateKey(cursor))) break;
+        streak += 1;
+        const prev = new Date(cursor);
+        prev.setDate(prev.getDate() - 1);
+        cursor = prev;
+      }
+
+      if (streak === 7 || streak === 30 || streak === 100) {
+        await insertMemoryIfAbsent(supabase, userId, {
+          memoryType: "streak",
+          title: `You kept a ${streak}-day streak of Daily Resets.`,
+          description: `${streak} days of showing up for yourself — that's something to hold onto.`,
+          sourceType: "streak",
+          sourceId: resetId,
+          emoji: "🔥",
+        });
+      }
     };
 
     // Read the existing row so we can decide, atomically, whether this call
@@ -326,7 +413,8 @@ export const submitDailyReset = createServerFn({ method: "POST" })
       await awardXp({
         data: { amount: 20, sourceType: "daily_reset", sourceId: row.id, description: "Daily Reset" },
       }).catch(() => {});
-      await ensureResetMemory().catch(() => {});
+      await ensureResetMemory(row.id).catch(() => {});
+      await ensureStreakMemory(row.id).catch(() => {});
     }
 
     return { newReset: !existing, awarded: completingNow && row?.completed === true };
@@ -344,9 +432,15 @@ export type LogHabitInput = {
 
 export type LogHabitResult = {
   totalToday: number;
+  goalMet: boolean;
+  xpAwarded: number;
 };
 
 // Records progress for a habit on a given day. Multiple logs per day accumulate.
+// Reaching the habit's goal awards XP at most once per day: the idempotency key
+// "<habitId>:<date>" rotates each day (mirroring how recurring quests key on
+// "<questId>:<periodKey>"), so a habit pays out again on each new day instead
+// of once in the user's lifetime.
 export const logHabit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: LogHabitInput) => d)
@@ -369,7 +463,38 @@ export const logHabit = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .eq("habit_id", data.habitId)
       .eq("date", date);
-    return { totalToday: (logs ?? []).reduce((s, l) => s + (l.value ?? 0), 0) };
+    const totalToday = (logs ?? []).reduce((s, l) => s + (l.value ?? 0), 0);
+
+    const { data: habit } = await supabase
+      .from("wellness_habits")
+      .select("target_value")
+      .eq("id", data.habitId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const goal = Number(habit?.target_value ?? 0);
+    const reached = goal > 0 && totalToday >= goal;
+
+    // Award once per day. awardXp is idempotent on (source_type, source_id),
+    // so rapid taps / duplicate requests can never pay the goal out twice.
+    let xpAwarded = 0;
+    if (reached) {
+      try {
+        const result = await awardXp({
+          data: {
+            amount: 20,
+            sourceType: "habit_goal",
+            sourceId: `${data.habitId}:${date}`,
+            description: "Habit goal reached",
+          },
+        });
+        xpAwarded = result.awarded ? 20 : 0;
+      } catch {
+        // A failed XP write must never break the habit log itself.
+      }
+    }
+
+    return { totalToday, goalMet: reached, xpAwarded };
   });
 
 export const getMyHabits = createServerFn({ method: "POST" })
@@ -448,6 +573,26 @@ export const completeMindGymActivity = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
       await awardXp({ data: { amount: xp, sourceType: "mind_gym", sourceId: data.activityId, description: "Mind Gym" } });
+      // Mind Gym milestone keepsake at 25 / 100 total completions.
+      try {
+        const { data: completions } = await supabase
+          .from("mind_gym_completions")
+          .select("id")
+          .eq("user_id", userId);
+        const total = (completions ?? []).length;
+        if (total === 25 || total === 100) {
+          await insertMemoryIfAbsent(supabase, userId, {
+            memoryType: "milestone",
+            title: `You've completed ${total} Mind Gym activities!`,
+            description: total === 100 ? "A hundred sessions of showing up." : "A quiet win to hold onto.",
+            sourceType: "mind_gym",
+            sourceId: data.activityId,
+            emoji: "🧘",
+          });
+        }
+      } catch (err) {
+        console.error("[Memory Lane] Mind Gym milestone skipped:", err);
+      }
     }
 
     return { xp };
@@ -458,8 +603,10 @@ export const completeMindGymActivity = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 
 export type FocusSessionInput = {
-  task?: string;
+  task?: string | null;
   durationMinutes: number;
+  notes?: string | null;
+  distractions?: number;
 };
 
 export const recordFocusSession = createServerFn({ method: "POST" })
@@ -475,12 +622,14 @@ export const recordFocusSession = createServerFn({ method: "POST" })
       .from("focus_sessions")
       .insert({
         user_id: userId,
-        task: data.task ?? null,
+        task: data.task?.trim() ? data.task.trim() : null,
         duration_minutes: minutes,
         started_at: now,
         completed_at: now,
         status: "completed",
         xp_awarded: xp,
+        notes: data.notes ?? null,
+        distractions: Math.max(0, Math.round(data.distractions ?? 0)),
       })
       .select("id")
       .single();
@@ -497,7 +646,36 @@ export const recordFocusSession = createServerFn({ method: "POST" })
       },
     });
 
-    return { xp };
+    // Focus-streak milestone bonus: +25 XP on every 7th consecutive focus day.
+    // Keyed on the streak length so a given milestone only pays out once.
+    let streakBonus = 0;
+    try {
+      const { data: completedDates } = await supabase
+        .from("focus_sessions")
+        .select("completed_at")
+        .eq("user_id", userId)
+        .eq("status", "completed")
+        .not("completed_at", "is", null);
+      const dateSet = new Set(
+        (completedDates ?? []).map((r) => toDateKey(new Date(r.completed_at as string))),
+      );
+      const streak = computeCurrentStreak(dateSet, toDateKey(new Date()));
+      if (streak > 0 && streak % 7 === 0) {
+        const { awarded } = await awardXp({
+          data: {
+            amount: 25,
+            sourceType: "focus_streak_bonus",
+            sourceId: `streak:${streak}`,
+            description: `${streak}-day focus streak`,
+          },
+        });
+        if (awarded) streakBonus = 25;
+      }
+    } catch (err) {
+      console.error("[Focus] streak bonus skipped:", err);
+    }
+
+    return { xp, streakBonus };
   });
 
 // ---------------------------------------------------------------------------
@@ -527,12 +705,12 @@ export const saveJournalEntry = createServerFn({ method: "POST" })
           content: data.content,
           journal_type: data.journalType ?? "free",
           mood_tag: data.moodTag ?? null,
-          favorite: data.favorite ?? false,
+          ...(data.favorite !== undefined ? { favorite: data.favorite } : {}),
         })
         .eq("id", data.id)
         .eq("user_id", userId);
       if (error) throw new Error(error.message);
-      return { id: data.id };
+      return { id: data.id, xpAwarded: 0 };
     }
 
     const { data: inserted, error } = await supabase
@@ -549,8 +727,16 @@ export const saveJournalEntry = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
+    let xpAwarded = 0;
     if (inserted) {
-      await awardXp({ data: { amount: 20, sourceType: "journal", sourceId: inserted.id, description: "Journal entry" } });
+      try {
+        const result = await awardXp({
+          data: { amount: 20, sourceType: "journal", sourceId: inserted.id, description: "Journal entry" },
+        });
+        xpAwarded = result.awarded ? 20 : 0;
+      } catch {
+        // A failed XP write must never lose the entry itself.
+      }
       // Award the Journal Explorer badge once the user reaches 20 entries,
       // reusing the user_badges pattern from getMyBadges.
       const { count } = await supabase
@@ -576,7 +762,35 @@ export const saveJournalEntry = createServerFn({ method: "POST" })
         }
       }
     }
-    return { id: inserted?.id };
+    return { id: inserted?.id, xpAwarded };
+  });
+
+export const deleteJournalEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { id: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("journal_entries")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const toggleJournalFavorite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { id: string; favorite: boolean }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("journal_entries")
+      .update({ favorite: data.favorite })
+      .eq("id", data.id)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, favorite: data.favorite };
   });
 
 export const getMyJournal = createServerFn({ method: "POST" })
@@ -801,6 +1015,55 @@ export const toggleCommunityReaction = createServerFn({ method: "POST" })
     return { active: true };
   });
 
+export const reportCommunityPost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { postId: string; reason?: string; details?: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+
+    const { data: post } = await supabase
+      .from("community_posts")
+      .select("user_id")
+      .eq("id", data.postId)
+      .maybeSingle();
+    if (!post) throw new Error("Post not found.");
+    if (post.user_id === userId) throw new Error("You can't report your own post.");
+
+    // Don't stack duplicate open reports from the same person on the same post.
+    const { data: existing } = await (supabase as any)
+      .from("community_reports")
+      .select("id")
+      .eq("post_id", data.postId)
+      .eq("reporter_id", userId)
+      .eq("status", "open")
+      .maybeSingle();
+    if (existing) return { reported: false, alreadyReported: true };
+
+    const { error } = await (supabase as any).from("community_reports").insert({
+      post_id: data.postId,
+      reporter_id: userId,
+      reason: data.reason ?? "other",
+      details: data.details ?? null,
+      status: "open",
+    });
+    if (error) throw new Error(error.message);
+    return { reported: true, alreadyReported: false };
+  });
+
+export const getCommunityStats = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data, error } = await (supabase as any).rpc("community_progress");
+    if (error) throw new Error(error.message);
+    return {
+      totalFocusMinutes: data?.totalFocusMinutes ?? 0,
+      totalResets: data?.totalResets ?? 0,
+      totalGardenItems: data?.totalGardenItems ?? 0,
+      totalJournals: data?.totalJournals ?? 0,
+    };
+  });
+
 // ---------------------------------------------------------------------------
 // 10. Badges
 // ---------------------------------------------------------------------------
@@ -876,25 +1139,129 @@ export const unlockGardenItem = createServerFn({ method: "POST" })
     return { unlocked: true, cost: item.xp_cost ?? 0 };
   });
 
+export type MyGardenItem = {
+  id: string;
+  slug: string;
+  name: string;
+  emoji: string | null;
+  itemType: string;
+  placed: boolean;
+};
+
+export type MyGardenRecent = {
+  id: string;
+  emoji: string;
+  title: string;
+  gardenXp: number;
+  createdAt: string;
+};
+
+export type MyGarden = {
+  garden: {
+    id: string;
+    name: string;
+    stage: number;
+    growthPoints: number;
+    theme: string;
+  } | null;
+  items: MyGardenItem[];
+  placedIds: string[];
+  recent: MyGardenRecent[];
+};
+
 export const getMyGarden = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<MyGarden> => {
     const { supabase, userId } = context;
+
     const { data: garden } = await supabase
       .from("gardens")
       .select("id, name, stage, growth_points, theme")
       .eq("user_id", userId)
       .maybeSingle();
 
-    const { data: placed } = await supabase
+    const { data: owned } = await supabase
       .from("user_garden_items")
-      .select("item_id, placed")
-      .eq("user_id", userId);
+      .select("item_id, placed, garden_items(id, slug, name, emoji, item_type)")
+      .eq("user_id", userId)
+      .order("unlocked_at", { ascending: false });
+
+    const items: MyGardenItem[] = (owned ?? []).map((p) => {
+      const gi = p.garden_items;
+      return {
+        id: gi?.id ?? p.item_id,
+        slug: gi?.slug ?? "",
+        name: gi?.name ?? "Garden item",
+        emoji: gi?.emoji ?? "🌱",
+        itemType: gi?.item_type ?? "decoration",
+        placed: p.placed,
+      };
+    });
+
+    // Recent garden growth = recent XP awards (every award grows the garden by
+    // half the XP amount, matching the store).
+    const { data: recentXp } = await supabase
+      .from("xp_transactions")
+      .select("id, description, amount, source_type, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    const sourceEmoji: Record<string, string> = {
+      daily_reset: "🌞",
+      mind_gym: "🧘",
+      focus: "⚡",
+      habit_goal: "💧",
+      journal: "📖",
+      quest: "🏆",
+      learning: "🎓",
+      daily_reward: "🎁",
+    };
+
+    const recent: MyGardenRecent[] = (recentXp ?? []).map((x) => ({
+      id: x.id,
+      emoji: sourceEmoji[x.source_type] ?? "⭐",
+      title: x.description ?? "Garden growth",
+      gardenXp: Math.round((x.amount ?? 0) / 2),
+      createdAt: x.created_at,
+    }));
 
     return {
-      garden,
-      placedIds: (placed ?? []).filter((p) => p.placed).map((p) => p.item_id),
+      garden: garden
+        ? {
+            id: garden.id,
+            name: garden.name,
+            stage: garden.stage,
+            growthPoints: garden.growth_points,
+            theme: garden.theme,
+          }
+        : null,
+      items,
+      placedIds: items.filter((i) => i.placed).map((i) => i.id),
+      recent,
     };
+  });
+
+export const setGardenItemPlaced = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { itemId: string; placed: boolean }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: garden } = await supabase
+      .from("gardens")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!garden) throw new Error("No garden for user");
+
+    const { error } = await supabase
+      .from("user_garden_items")
+      .update({ placed: data.placed })
+      .eq("user_id", userId)
+      .eq("item_id", data.itemId)
+      .eq("garden_id", garden.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, placed: data.placed };
   });
 
 // ---------------------------------------------------------------------------
@@ -1243,6 +1610,44 @@ export const getMindChecks = createServerFn({ method: "POST" })
 
 // ---------------------------------------------------------------------------
 // 15. Memories (Memory Lane)
+
+// Shared, dedup-safe creator so activity handlers can leave real keepsakes in
+// Memory Lane without ever double-writing a given source.
+type MemoryInput = {
+  memoryType: string;
+  title: string;
+  description?: string | null;
+  sourceType: string;
+  sourceId?: string | null;
+  emoji: string;
+};
+
+async function insertMemoryIfAbsent(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  input: MemoryInput,
+) {
+  const filter = () =>
+    supabase
+      .from("memories")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("source_type", input.sourceType);
+  const { data: existing } = input.sourceId
+    ? await filter().eq("source_id", input.sourceId).limit(1)
+    : await filter().limit(1);
+  if ((existing ?? []).length > 0) return;
+  await supabase.from("memories").insert({
+    user_id: userId,
+    memory_type: input.memoryType,
+    title: input.title,
+    description: input.description ?? null,
+    source_type: input.sourceType,
+    source_id: input.sourceId ?? null,
+    emoji: input.emoji,
+  });
+}
+
 // ---------------------------------------------------------------------------
 
 export const getMyMemories = createServerFn({ method: "POST" })
@@ -1340,7 +1745,7 @@ export const claimDailyReward = createServerFn({ method: "POST" })
     // Garden grows at half the XP rate, matching the client store.
     const { data: garden } = await supabase
       .from("gardens")
-      .select("growth_points")
+      .select("id, growth_points")
       .eq("user_id", userId)
       .maybeSingle();
     if (garden) {
@@ -1348,6 +1753,32 @@ export const claimDailyReward = createServerFn({ method: "POST" })
         .from("gardens")
         .update({ growth_points: (garden.growth_points ?? 0) + 25 })
         .eq("user_id", userId);
+    }
+
+    // Grant the "Butterfly Flock" garden item so the reward is genuinely owned
+    // (idempotent — the same item is never granted twice).
+    if (garden) {
+      const { data: butterfly } = await supabase
+        .from("garden_items")
+        .select("id")
+        .eq("slug", "butterfly")
+        .maybeSingle();
+      if (butterfly) {
+        const { data: owned } = await supabase
+          .from("user_garden_items")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("item_id", butterfly.id)
+          .maybeSingle();
+        if (!owned) {
+          await supabase.from("user_garden_items").insert({
+            user_id: userId,
+            garden_id: garden.id,
+            item_id: butterfly.id,
+            placed: true,
+          });
+        }
+      }
     }
 
     return { claimed: true, awarded: true };
@@ -1394,5 +1825,1109 @@ export const recordGamePlay = createServerFn({ method: "POST" })
       return { awarded: true };
     }
     return { awarded: false };
+  });
+
+// ---------------------------------------------------------------------------
+// 15. Onboarding
+// ---------------------------------------------------------------------------
+
+export type CompleteOnboardingInput = {
+  avatar?: string;
+  goals?: string[];
+};
+
+export const completeOnboarding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: CompleteOnboardingInput) => d)
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const { supabase, userId } = context;
+    const { avatar, goals } = data;
+
+    // Save the chosen avatar and flip the onboarding flag. The profile row is
+    // normally created by the signup trigger, but upsert keeps this safe even
+    // if the row is missing for some reason.
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        id: userId,
+        ...(avatar ? { avatar } : {}),
+        onboarding_completed: true,
+      },
+      { onConflict: "id" },
+    );
+    if (error) throw new Error(error.message);
+
+    // Persist the selected success goals (max 3) into the goals table.
+    // This is a nice-to-have, so a failure here never blocks onboarding.
+    if (goals && goals.length > 0) {
+      const { data: existing } = await supabase.from("goals").select("title").eq("user_id", userId);
+      const existingTitles = new Set((existing ?? []).map((g) => g.title as string));
+      const rows = goals
+        .slice(0, 3)
+        .filter((title) => !!title && !existingTitles.has(title))
+        .map((title) => ({ user_id: userId, title, category: "wellbeing", status: "active" }));
+      if (rows.length > 0) {
+        const { error: goalsError } = await supabase.from("goals").insert(rows);
+        if (goalsError) console.error("Failed to save onboarding goals", goalsError.message);
+      }
+    }
+
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// 19. Numi AI companion (conversations, persistence, personalization)
+// ---------------------------------------------------------------------------
+
+export type NumiConversation = {
+  id: string;
+  title: string;
+  lastMessageAt: string;
+  createdAt: string;
+};
+
+export type NumiMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  metadata: Json;
+};
+
+export type SendNumiMessageInput = {
+  conversationId?: string | null;
+  message: string;
+  intent?: string | null;
+};
+
+export type SendNumiMessageResult = {
+  conversationId: string;
+  reply: string;
+  replySource: "ai" | "fallback" | "safety";
+  xpAwarded: number;
+};
+
+// A compact snapshot of the user's real NuMind data, assembled server-side and
+// used to personalize Numi's system prompt. Never shipped to the client bundle.
+type NumiContext = {
+  firstName: string | null;
+  motivationalStyle: string;
+  levelNumber: number;
+  levelName: string;
+  levelEmoji: string | null;
+  xpTotal: number;
+  currentStreak: number;
+  gardenStage: number | null;
+  gardenTheme: string | null;
+  todayCompleted: boolean;
+  journalThemes: string[];
+  goals: string[];
+  habitsProgress: string[];
+};
+
+function computeCurrentStreak(dateSet: Set<string>, today: string): number {
+  const todayDate = new Date(today);
+  const yesterday = new Date(todayDate);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const walked = dateSet.has(today)
+    ? todayDate
+    : dateSet.has(toDateKey(yesterday))
+      ? yesterday
+      : null;
+
+  let streak = 0;
+  let cursor = walked;
+  while (cursor) {
+    if (!dateSet.has(toDateKey(cursor))) break;
+    streak += 1;
+    cursor = new Date(cursor);
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+async function buildNumiContext(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<NumiContext> {
+  const today = toDateKey(new Date());
+
+  const [
+    profileRes,
+    xpRes,
+    levelsRes,
+    resetRes,
+    gardenRes,
+    journalRes,
+    goalsRes,
+    habitsRes,
+    logsRes,
+    resetDatesRes,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("first_name, preferred_motivational_style")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabase.from("xp_transactions").select("amount").eq("user_id", userId),
+    supabase.from("levels").select("level_number, name, emoji, xp_required").order("xp_required"),
+    supabase
+      .from("daily_resets")
+      .select("completed")
+      .eq("user_id", userId)
+      .eq("date", today)
+      .maybeSingle(),
+    supabase.from("gardens").select("stage, theme").eq("user_id", userId).maybeSingle(),
+    supabase
+      .from("journal_entries")
+      .select("title, content, journal_type")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("goals")
+      .select("title")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .limit(5),
+    supabase
+      .from("wellness_habits")
+      .select("id, title, emoji")
+      .eq("user_id", userId)
+      .order("created_at"),
+    supabase.from("habit_logs").select("habit_id, value").eq("user_id", userId).eq("date", today),
+    supabase
+      .from("daily_resets")
+      .select("date")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .order("date", { ascending: false })
+      .limit(400),
+  ]);
+
+  const xpTotal = (xpRes.data ?? []).reduce((sum, r) => sum + (r.amount ?? 0), 0);
+
+  const levelRows = levelsRes.data ?? [];
+  let currentLevel = levelRows[0] ?? {
+    level_number: 1,
+    name: "Explorer",
+    emoji: null as string | null,
+    xp_required: 0,
+  };
+  for (const lvl of levelRows) {
+    if (xpTotal >= lvl.xp_required) currentLevel = lvl;
+  }
+
+  const dateSet = new Set((resetDatesRes.data ?? []).map((r) => r.date));
+  const currentStreak = computeCurrentStreak(dateSet, today);
+
+  const journalThemes = (journalRes.data ?? []).map((j) => {
+    const title = j.title?.trim();
+    if (title) return title;
+    switch (j.journal_type) {
+      case "todays_win":
+        return "a win";
+      case "gratitude":
+        return "gratitude";
+      case "brain_dump":
+        return "a brain dump";
+      case "letter_to_future_me":
+        return "a letter to future me";
+      default:
+        return "a journal reflection";
+    }
+  });
+
+  const goals = (goalsRes.data ?? []).map((g) => g.title).filter(Boolean).slice(0, 5) as string[];
+
+  const habitMap = new Map<string, { title: string; emoji: string | null }>();
+  for (const h of habitsRes.data ?? []) {
+    habitMap.set(h.id, { title: h.title ?? "Habit", emoji: h.emoji });
+  }
+  const totals = new Map<string, number>();
+  for (const log of logsRes.data ?? []) {
+    totals.set(log.habit_id, (totals.get(log.habit_id) ?? 0) + (log.value ?? 0));
+  }
+  const habitsProgress = [...habitMap.entries()].slice(0, 4).map(
+    ([id, h]) => `${h.emoji ?? "•"} ${h.title}: ${totals.get(id) ?? 0}`,
+  );
+
+  return {
+    firstName: profileRes.data?.first_name ?? null,
+    motivationalStyle: profileRes.data?.preferred_motivational_style ?? "encouraging",
+    levelNumber: currentLevel.level_number,
+    levelName: currentLevel.name,
+    levelEmoji: currentLevel.emoji,
+    xpTotal,
+    currentStreak,
+    gardenStage: gardenRes.data?.stage ?? null,
+    gardenTheme: gardenRes.data?.theme ?? null,
+    todayCompleted: resetRes.data?.completed ?? false,
+    journalThemes,
+    goals,
+    habitsProgress,
+  };
+}
+
+export const getMyNumiConversations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<NumiConversation[]> => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("ai_conversations")
+      .select("id, title, last_message_at, created_at")
+      .eq("user_id", userId)
+      .eq("archived", false)
+      .order("last_message_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((c) => ({
+      id: c.id,
+      title: c.title,
+      lastMessageAt: c.last_message_at,
+      createdAt: c.created_at,
+    }));
+  });
+
+export const newNumiConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ id: string }> => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("ai_conversations")
+      .insert({ user_id: userId })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: data.id };
+  });
+
+export const getNumiConversationMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { conversationId: string }) => d)
+  .handler(async ({ context, data }): Promise<NumiMessage[]> => {
+    const { supabase, userId } = context;
+    const { data: rows, error } = await supabase
+      .from("ai_conversation_messages")
+      .select("id, role, content, metadata, created_at")
+      .eq("conversation_id", data.conversationId)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((m) => ({
+      id: m.id,
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.content,
+      createdAt: m.created_at,
+      metadata: m.metadata,
+    }));
+  });
+
+export const archiveNumiConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { conversationId: string }) => d)
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("ai_conversations")
+      .update({ archived: true })
+      .eq("id", data.conversationId)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const sendNumiMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: SendNumiMessageInput) => d)
+  .handler(async ({ context, data }): Promise<SendNumiMessageResult> => {
+    const { supabase, userId } = context;
+    const text = (data.message ?? "").trim();
+    const intent = data.intent?.trim() || null;
+    if (!text) throw new Error("Numi message cannot be empty");
+
+    // 1. Resolve the conversation (a new one is created on the first message).
+    let conversationId: string | null = data.conversationId ?? null;
+    if (conversationId) {
+      const { data: owned } = await supabase
+        .from("ai_conversations")
+        .select("id")
+        .eq("id", conversationId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!owned) conversationId = null;
+    }
+    if (!conversationId) {
+      const { data: created, error: createError } = await supabase
+        .from("ai_conversations")
+        .insert({ user_id: userId, title: text.slice(0, 60) })
+        .select("id")
+        .single();
+      if (createError) throw new Error(createError.message);
+      conversationId = created.id;
+    }
+
+    // 2. Persist the user's message.
+    const { error: userError } = await supabase.from("ai_conversation_messages").insert({
+      conversation_id: conversationId,
+      user_id: userId,
+      role: "user",
+      content: text,
+      metadata: intent ? { intent } : {},
+    });
+    if (userError) throw new Error(userError.message);
+
+    // 3. Personalization context from real user data.
+    const ctx = await buildNumiContext(supabase, userId);
+
+    // 4. Recent history gives the AI conversational memory.
+    const { data: historyRows } = await supabase
+      .from("ai_conversation_messages")
+      .select("role, content")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(40);
+    const history = (historyRows ?? [])
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-20)
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+    // 5. Safety first, then the AI, then a canned fallback responder.
+    let reply: string;
+    let replySource: SendNumiMessageResult["replySource"] = "fallback";
+
+    const safetyReply = numiCrisisReply(text);
+    if (safetyReply) {
+      reply = safetyReply;
+      replySource = "safety";
+    } else {
+      try {
+        // Dynamic import keeps the provider helper out of the client bundle.
+        const { chatCompletion } = await import("@/lib/numi-ai");
+        const aiMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+          { role: "system", content: buildNumiSystemPrompt(ctx, intent) },
+          ...history,
+          { role: "user", content: text },
+        ];
+        reply = (await chatCompletion(aiMessages)).reply;
+        replySource = "ai";
+      } catch (err) {
+        console.error("[Numi] AI request failed, using fallback responder:", err);
+        reply = numiKeywordReply(text) ?? numiFallbackReply(ctx, intent);
+      }
+    }
+
+    // 6. Persist the assistant's reply.
+    const { error: assistantError } = await supabase.from("ai_conversation_messages").insert({
+      conversation_id: conversationId,
+      user_id: userId,
+      role: "assistant",
+      content: reply,
+      metadata: { source: replySource },
+    });
+    if (assistantError) throw new Error(assistantError.message);
+
+    // 7. Touch the conversation's recency marker.
+    await supabase
+      .from("ai_conversations")
+      .update({ last_message_at: new Date().toISOString() })
+      .eq("id", conversationId)
+      .eq("user_id", userId);
+
+    // 8. Small daily reward — idempotent via awardXp's source key, non-blocking.
+    let xpAwarded = 0;
+    try {
+      const { awarded } = await awardXp({
+        data: {
+          amount: 5,
+          sourceType: "numi_chat",
+          sourceId: toDateKey(new Date()),
+          description: "Checked in with Numi",
+        },
+      });
+      xpAwarded = awarded ? 5 : 0;
+    } catch (err) {
+      console.error("[Numi] XP award skipped:", err);
+    }
+
+    return { conversationId, reply, replySource, xpAwarded };
+  });
+
+// ---------------------------------------------------------------------------
+// Numi reply builders (system prompt + offline fallback responder)
+// ---------------------------------------------------------------------------
+
+function buildNumiSystemPrompt(ctx: NumiContext, intent: string | null): string {
+  const lines = [
+    "You are Numi, the warm and encouraging AI wellness companion inside the NuMind app. You help with everyday wellness and personal growth: motivation, focus, relaxation, goal setting, planning, journaling prompts, celebrating progress and winding down.",
+    "Tone: warm, concise, specific and non-clinical. Keep replies to 2-4 short sentences unless the user asks for more. Use emoji sparingly.",
+    "You are an AI companion, not a doctor, therapist or healthcare professional. Never diagnose, prescribe or treat. If the user mentions self-harm or a crisis, respond with care and gently encourage professional support.",
+    "Ground your reply in the user's real NuMind data whenever it is relevant. Current snapshot:",
+    `- Name: ${ctx.firstName ?? "the user"}`,
+    `- Preferred motivational style: ${ctx.motivationalStyle}`,
+    `- Level ${ctx.levelNumber} — ${ctx.levelName}${ctx.levelEmoji ? ` ${ctx.levelEmoji}` : ""}`,
+    `- Total XP: ${ctx.xpTotal}`,
+    `- Current streak: ${ctx.currentStreak} day${ctx.currentStreak === 1 ? "" : "s"}`,
+    ctx.gardenStage != null
+      ? `- Wellness garden stage: ${ctx.gardenStage}${ctx.gardenTheme ? ` (${ctx.gardenTheme})` : ""}`
+      : "",
+    `- Daily Reset completed today: ${ctx.todayCompleted ? "yes" : "not yet"}`,
+    ctx.journalThemes.length ? `- Recent journal themes: ${ctx.journalThemes.join("; ")}` : "",
+    ctx.goals.length ? `- Active goals: ${ctx.goals.join("; ")}` : "",
+    ctx.habitsProgress.length ? `- Today's habit progress: ${ctx.habitsProgress.join("; ")}` : "",
+    "",
+    "Do not fabricate user data. If the snapshot is sparse, keep the reply general and supportive.",
+  ];
+  if (intent) {
+    lines.push(`The user tapped a quick action labelled "${intent}". Match your reply to that intent.`);
+  }
+  return lines.filter(Boolean).join("\n");
+}
+
+// Gentle, safe response for crisis-related messages — always takes priority.
+function numiCrisisReply(message: string): string | null {
+  const lower = message.toLowerCase();
+  if (/(kill myself|end my life|suicide|suicidal|self-?harm|hurt myself|want to die)/.test(lower)) {
+    return "I'm really glad you told me, and I care about your safety. I'm not equipped to be your crisis support, so please reach out to someone who can help right now. If you're in the US, call or text 988 (Suicide & Crisis Lifeline) or text HOME to 741741. If you're elsewhere, contact your local emergency services or crisis line. You matter, and help is available. 🤍";
+  }
+  return null;
+}
+
+// Light keyword responder used when the AI is unavailable.
+function numiKeywordReply(message: string): string | null {
+  const lower = message.toLowerCase();
+  if (/(sad|down|low|depress|hopeless|miserable)/.test(lower)) {
+    return "Thanks for telling me — that takes courage. You don't have to solve it all today. What's one small thing that usually brings you a little comfort?";
+  }
+  if (/(stress|stressed|overwhelm|anxious|anxiety|worried|panic)/.test(lower)) {
+    return "That sounds heavy. Let's bring it down a notch: name the smallest next step, then breathe out slowly for six seconds. Want me to walk you through a quick wind-down?";
+  }
+  if (/(tired|exhausted|fatigue|sleep|insomnia)/.test(lower)) {
+    return "Rest counts as progress. Is tonight a night to wrap up a little earlier and protect your sleep?";
+  }
+  if (/(grateful|gratitude|thankful)/.test(lower)) {
+    return "I love that. Gratitude is a small daily reset for the mind — want to capture it in your journal so you can look back on it?";
+  }
+  if (/(workout|exercise|run|gym|walk|yoga|stretch)/.test(lower)) {
+    return "Movement is self-respect in action. If a full session feels like too much, a 10-minute walk still counts — and so does showing up at all.";
+  }
+  if (/(procrastinat|avoid|can't start|cant start|stuck)/.test(lower)) {
+    return "Starting is the hard part, not the work. Try a 5-minute timer on just the first tiny step — you're allowed to stop after that.";
+  }
+  return null;
+}
+
+// Canned, personalized replies for the quick actions and any other message.
+function numiFallbackReply(ctx: NumiContext, intent: string | null): string {
+  const name = ctx.firstName ?? null;
+  const greet = name ?? "friend";
+  switch (intent) {
+    case "motivate":
+      return ctx.currentStreak > 0
+        ? `${greet}, you've shown up ${ctx.currentStreak} day${ctx.currentStreak === 1 ? "" : "s"} in a row. That's not luck — that's you choosing yourself, repeatedly. One small thing today is plenty.`
+        : "One small thing today is plenty — and it counts. What's the easiest win you can grab in the next five minutes?";
+    case "relax":
+      return "Let's do 60 seconds of breathing together. In for 4, hold for 4, out for 6. I'll be right here when you're done. 🌬";
+    case "focus":
+      return "Try a 15-minute Focus Sprint. Pick one task, silence the rest, and I'll keep the timer. Want me to point you to Mind Gym?";
+    case "goal":
+      return "Let's make it small and specific: \"Walk 15 minutes after lunch, 4 days this week.\" Add it to your Quest and I'll keep you honest.";
+    case "plan":
+      return "Top 3 for today: 1) Daily Reset 2) One focus sprint on your main task 3) A short walk outside. Everything else is a bonus.";
+    case "journal":
+      return "Here's a prompt: what's one thing that went better than you expected this week?";
+    case "celebrate":
+      return ctx.gardenStage != null
+        ? `Here's what you've built: ${ctx.xpTotal} XP, ${ctx.levelName} level ${ctx.levelNumber}, and a garden at stage ${ctx.gardenStage}. That's real progress. 🌳`
+        : `Here's what you've built: ${ctx.xpTotal} XP and ${ctx.levelName} level ${ctx.levelNumber}. That's real progress. 🌱`;
+    case "wind_down":
+      return "Screens down, lights low. Try the Evening Wind Down in Mind Gym — six minutes and your brain gets the hint.";
+    default:
+      return `I hear you${name ? `, ${name}` : ""}. Let's keep it small: pick one thing from Today's Journey and I'll cheer you on. 🌱`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 21. Focus Zone (daily plans, tasks, history, stats)
+// ---------------------------------------------------------------------------
+
+export type FocusTask = { id: string; title: string; done: boolean };
+
+export type MyFocusPlan = {
+  id: string | null;
+  date: string;
+  top3: string[];
+  brainDump: string | null;
+  tasks: FocusTask[];
+};
+
+export type SaveFocusPlanInput = {
+  date?: string | null;
+  top3?: string[] | null;
+  brainDump?: string | null;
+  tasks?: FocusTask[] | null;
+};
+
+// Normalize the raw jsonb task list into stable, typed tasks (assigning an id
+// to any task that doesn't have one, e.g. legacy rows).
+function normalizeFocusTasks(value: unknown): FocusTask[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((raw) => {
+    const t = (raw ?? {}) as { id?: unknown; title?: unknown; done?: unknown };
+    return {
+      id: typeof t.id === "string" && t.id ? t.id : crypto.randomUUID(),
+      title: typeof t.title === "string" ? t.title : "",
+      done: t.done === true,
+    };
+  });
+}
+
+function top3FromJson(value: Json, size = 3): string[] {
+  const raw = Array.isArray(value) ? value : [];
+  return Array.from({ length: size }, (_, i) => String(raw[i] ?? ""));
+}
+
+export const getMyFocusPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { date?: string | null }) => d)
+  .handler(async ({ context, data }): Promise<MyFocusPlan> => {
+    const { supabase, userId } = context;
+    const date = data.date ?? toDateKey(new Date());
+    const { data: plan, error } = await supabase
+      .from("focus_plans")
+      .select("id, date, top_3, brain_dump, tasks")
+      .eq("user_id", userId)
+      .eq("date", date)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!plan) return { id: null, date, top3: ["", "", ""], brainDump: null, tasks: [] };
+    return {
+      id: plan.id,
+      date: plan.date,
+      top3: top3FromJson(plan.top_3),
+      brainDump: plan.brain_dump,
+      tasks: normalizeFocusTasks(plan.tasks),
+    };
+  });
+
+export const saveFocusPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: SaveFocusPlanInput) => d)
+  .handler(async ({ context, data }): Promise<MyFocusPlan> => {
+    const { supabase, userId } = context;
+    const date = data.date ?? toDateKey(new Date());
+
+    const { data: current } = await supabase
+      .from("focus_plans")
+      .select("top_3, brain_dump, tasks")
+      .eq("user_id", userId)
+      .eq("date", date)
+      .maybeSingle();
+
+    // Merge semantics: only the fields the client sends are replaced; the rest
+    // keep whatever was already saved for the day. `undefined` = keep current.
+    const hasTop3 = Array.isArray(data.top3);
+    const hasBrainDump = data.brainDump !== undefined;
+    const hasTasks = Array.isArray(data.tasks);
+
+    const patch = {
+      top_3: hasTop3
+        ? top3FromJson(data.top3 as string[])
+        : Array.isArray(current?.top_3)
+          ? current.top_3
+          : [],
+      brain_dump: hasBrainDump
+        ? (data.brainDump as string).trim() || null
+        : current?.brain_dump ?? null,
+      tasks: hasTasks
+        ? normalizeFocusTasks(data.tasks)
+        : Array.isArray(current?.tasks)
+          ? current.tasks
+          : [],
+    };
+
+    const { data: saved, error } = await supabase
+      .from("focus_plans")
+      .upsert({ user_id: userId, date, ...patch }, { onConflict: "user_id,date" })
+      .select("id, date, top_3, brain_dump, tasks")
+      .single();
+    if (error) throw new Error(error.message);
+
+    return {
+      id: saved.id,
+      date: saved.date,
+      top3: top3FromJson(saved.top_3),
+      brainDump: saved.brain_dump,
+      tasks: normalizeFocusTasks(saved.tasks),
+    };
+  });
+
+export type ToggleFocusTaskInput = {
+  planId?: string | null;
+  taskId: string;
+  done: boolean;
+  tasks: FocusTask[];
+};
+
+export const toggleFocusTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: ToggleFocusTaskInput) => d)
+  .handler(async ({ context, data }): Promise<{ planId: string; xpAwarded: number }> => {
+    const { supabase, userId } = context;
+    const today = toDateKey(new Date());
+    const tasks = normalizeFocusTasks(data.tasks);
+
+    // Resolve the plan (must belong to the caller); otherwise upsert a new one.
+    let planId: string | null = data.planId ?? null;
+    if (planId) {
+      const { data: owned } = await supabase
+        .from("focus_plans")
+        .select("id")
+        .eq("id", planId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!owned) planId = null;
+    }
+
+    let savedPlanId: string;
+    if (planId) {
+      const { data, error } = await supabase
+        .from("focus_plans")
+        .update({ tasks })
+        .eq("id", planId)
+        .eq("user_id", userId)
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      savedPlanId = data.id;
+    } else {
+      const { data, error } = await supabase
+        .from("focus_plans")
+        .upsert({ user_id: userId, date: today, tasks }, { onConflict: "user_id,date" })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      savedPlanId = data.id;
+    }
+
+    // Award XP once per completed task (idempotent via sourceId = task id).
+    let xpAwarded = 0;
+    if (data.done) {
+      try {
+        const { awarded } = await awardXp({
+          data: {
+            amount: 5,
+            sourceType: "focus_task",
+            sourceId: data.taskId,
+            description: "Focus task complete",
+          },
+        });
+        xpAwarded = awarded ? 5 : 0;
+      } catch (err) {
+        console.error("[Focus] task XP skipped:", err);
+      }
+    }
+    return { planId: savedPlanId, xpAwarded };
+  });
+
+// Bonus paid once per day when a full Pomodoro cycle (all work blocks) finishes.
+export const claimFocusCycleBonus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    try {
+      const { awarded } = await awardXp({
+        data: {
+          amount: 10,
+          sourceType: "focus_pomodoro",
+          sourceId: toDateKey(new Date()),
+          description: "Pomodoro cycle complete",
+        },
+      });
+      return { xpAwarded: awarded ? 10 : 0 };
+    } catch (err) {
+      console.error("[Focus] cycle bonus skipped:", err);
+      return { xpAwarded: 0 };
+    }
+  });
+
+export type FocusHistoryPoint = { date: string; minutes: number };
+
+export type MyFocusHistory = {
+  sessions: Array<{
+    id: string;
+    task: string | null;
+    durationMinutes: number;
+    notes: string | null;
+    distractions: number;
+    completedAt: string;
+  }>;
+  todayMinutes: number;
+  weekMinutes: number;
+  sessionsToday: number;
+  focusStreak: number;
+  last7Days: FocusHistoryPoint[];
+};
+
+export const getMyFocusHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MyFocusHistory> => {
+    const { supabase, userId } = context;
+    const todayKey = toDateKey(new Date());
+
+    const { data: rows, error } = await supabase
+      .from("focus_sessions")
+      .select("id, task, duration_minutes, notes, distractions, completed_at")
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .not("completed_at", "is", null)
+      .order("completed_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+
+    const sessions = (rows ?? [])
+      .filter((r) => r.completed_at != null)
+      .map((r) => ({
+        id: r.id,
+        task: r.task,
+        durationMinutes: r.duration_minutes,
+        notes: r.notes,
+        distractions: r.distractions,
+        completedAt: r.completed_at as string,
+      }));
+
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+
+    let todayMinutes = 0;
+    let weekMinutes = 0;
+    let sessionsToday = 0;
+    const last7Days = new Map<string, number>();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      last7Days.set(toDateKey(d), 0);
+    }
+
+    const daySet = new Set<string>();
+    for (const s of sessions) {
+      const doneAt = new Date(s.completedAt);
+      const dateKey = toDateKey(doneAt);
+      daySet.add(dateKey);
+      if (dateKey === todayKey) {
+        todayMinutes += s.durationMinutes;
+        sessionsToday += 1;
+      }
+      if (doneAt >= monday) weekMinutes += s.durationMinutes;
+      if (last7Days.has(dateKey)) {
+        last7Days.set(dateKey, (last7Days.get(dateKey) ?? 0) + s.durationMinutes);
+      }
+    }
+
+    return {
+      sessions: sessions.slice(0, 20),
+      todayMinutes,
+      weekMinutes,
+      sessionsToday,
+      focusStreak: computeCurrentStreak(daySet, todayKey),
+      last7Days: [...last7Days.entries()].map(([date, minutes]) => ({ date, minutes })),
+    };
+  });
+// ---------------------------------------------------------------------------
+// 15c. My Analytics — per-user dashboard data, computed from existing tables
+// ---------------------------------------------------------------------------
+
+export type AnalyticsDatePoint = { date: string; value: number };
+export type AnalyticsSourceSlice = { source: string; value: number; count: number };
+export type AnalyticsCountSlice = { source: string; count: number };
+export type AnalyticsWellbeingPoint = {
+  date: string;
+  mood: number | null;
+  energy: number | null;
+  focus: number | null;
+  stress: number | null;
+};
+export type AnalyticsFocusPoint = { date: string; minutes: number; sessions: number };
+
+export type MyAnalytics = {
+  summary: {
+    totalXp: number;
+    currentStreak: number;
+    longestStreak: number;
+    activeDays: number;
+    resetsCompleted: number;
+    focusSessions: number;
+    focusMinutes: number;
+    journalEntries: number;
+    habitsLogged: number;
+    gamePlays: number;
+    questsCompleted: number;
+    badgesEarned: number;
+    mindGymCompletions: number;
+    lessonsCompleted: number;
+    goalsAchieved: number;
+  };
+  xpDaily: AnalyticsDatePoint[];
+  xpBySource: AnalyticsSourceSlice[];
+  wellbeing: AnalyticsWellbeingPoint[];
+  focusDaily: AnalyticsFocusPoint[];
+  journalDaily: AnalyticsDatePoint[];
+  journalTypeBreakdown: AnalyticsCountSlice[];
+  habitDaily: AnalyticsDatePoint[];
+  resetDaily: AnalyticsDatePoint[];
+  games: AnalyticsCountSlice[];
+};
+
+export const getMyAnalytics = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MyAnalytics> => {
+    const { supabase, userId } = context;
+    const todayKey = toDateKey(new Date());
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 365);
+    const since = toDateKey(cutoff);
+
+    const [
+      xpRes,
+      resetsRes,
+      mindRes,
+      focusRes,
+      journalRes,
+      habitLogsRes,
+      playsRes,
+      questRes,
+      badgesRes,
+      mindGymRes,
+      learningRes,
+      goalsRes,
+    ] = await Promise.all([
+      supabase
+        .from("xp_transactions")
+        .select("amount, source_type, created_at")
+        .eq("user_id", userId),
+      supabase
+        .from("daily_resets")
+        .select("date, completed, mood, energy, focus")
+        .eq("user_id", userId),
+      supabase
+        .from("mind_checks")
+        .select("date, mood, energy, focus, stress")
+        .eq("user_id", userId),
+      supabase
+        .from("focus_sessions")
+        .select("duration_minutes, completed_at, status")
+        .eq("user_id", userId)
+        .eq("status", "completed")
+        .not("completed_at", "is", null),
+      supabase
+        .from("journal_entries")
+        .select("journal_type, created_at")
+        .eq("user_id", userId),
+      supabase.from("habit_logs").select("date").eq("user_id", userId),
+      supabase.from("game_plays").select("game, played_at").eq("user_id", userId),
+      supabase
+        .from("quest_completions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("completed", true),
+      supabase.from("user_badges").select("id").eq("user_id", userId),
+      supabase.from("mind_gym_completions").select("id").eq("user_id", userId),
+      supabase
+        .from("learning_progress")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("status", "completed"),
+      supabase
+        .from("goals")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("status", "completed"),
+    ]);
+
+    const withinWindow = (date: string) => date >= since;
+
+    // ---- XP -----------------------------------------------------------------
+    const xpRows = xpRes.data ?? [];
+    const totalXp = xpRows.reduce((sum, r) => sum + (r.amount ?? 0), 0);
+
+    const xpByDay = new Map<string, number>();
+    const bySrc = new Map<string, { value: number; count: number }>();
+    for (const r of xpRows) {
+      const day = (r.created_at ?? "").slice(0, 10);
+      if (day && withinWindow(day)) {
+        xpByDay.set(day, (xpByDay.get(day) ?? 0) + (r.amount ?? 0));
+      }
+      const src = r.source_type || "other";
+      const cur = bySrc.get(src) ?? { value: 0, count: 0 };
+      cur.value += r.amount ?? 0;
+      cur.count += 1;
+      bySrc.set(src, cur);
+    }
+    const xpDaily = [...xpByDay.entries()]
+      .map(([date, value]) => ({ date, value }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const xpBySource = [...bySrc.entries()]
+      .map(([source, v]) => ({ source, value: v.value, count: v.count }))
+      .sort((a, b) => b.value - a.value);
+
+    // ---- Wellbeing (mood / energy / focus / stress across days) -------------
+    const wellbeingMap = new Map<string, AnalyticsWellbeingPoint>();
+    for (const r of resetsRes.data ?? []) {
+      if (!withinWindow(r.date)) continue;
+      wellbeingMap.set(r.date, {
+        date: r.date,
+        mood: r.mood ?? null,
+        energy: r.energy ?? null,
+        focus: r.focus ?? null,
+        stress: null,
+      });
+    }
+    for (const r of mindRes.data ?? []) {
+      if (!withinWindow(r.date)) continue;
+      const existing = wellbeingMap.get(r.date);
+      wellbeingMap.set(r.date, {
+        date: r.date,
+        mood: r.mood ?? existing?.mood ?? null,
+        energy: r.energy ?? existing?.energy ?? null,
+        focus: r.focus ?? existing?.focus ?? null,
+        stress: r.stress ?? null,
+      });
+    }
+    const wellbeing = [...wellbeingMap.values()].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+
+    // ---- Focus --------------------------------------------------------------
+    const focusRows = focusRes.data ?? [];
+    const focusMap = new Map<string, { minutes: number; sessions: number }>();
+    for (const r of focusRows) {
+      if (!r.completed_at) continue;
+      const day = r.completed_at.slice(0, 10);
+      if (!withinWindow(day)) continue;
+      const cur = focusMap.get(day) ?? { minutes: 0, sessions: 0 };
+      cur.minutes += r.duration_minutes ?? 0;
+      cur.sessions += 1;
+      focusMap.set(day, cur);
+    }
+    const focusDaily = [...focusMap.entries()]
+      .map(([date, v]) => ({ date, ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // ---- Journal ------------------------------------------------------------
+    const journalRows = journalRes.data ?? [];
+    const journalByDay = new Map<string, number>();
+    const typeBy = new Map<string, number>();
+    for (const r of journalRows) {
+      const day = (r.created_at ?? "").slice(0, 10);
+      if (day && withinWindow(day)) {
+        journalByDay.set(day, (journalByDay.get(day) ?? 0) + 1);
+      }
+      const type = r.journal_type || "journal";
+      typeBy.set(type, (typeBy.get(type) ?? 0) + 1);
+    }
+    const journalDaily = [...journalByDay.entries()]
+      .map(([date, value]) => ({ date, value }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const journalTypeBreakdown = [...typeBy.entries()]
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // ---- Habits -------------------------------------------------------------
+    const habitRows = habitLogsRes.data ?? [];
+    const habitByDay = new Map<string, number>();
+    for (const r of habitRows) {
+      if (!withinWindow(r.date)) continue;
+      habitByDay.set(r.date, (habitByDay.get(r.date) ?? 0) + 1);
+    }
+    const habitDaily = [...habitByDay.entries()]
+      .map(([date, value]) => ({ date, value }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // ---- Daily Reset + streak -----------------------------------------------
+    const resetRows = resetsRes.data ?? [];
+    const resetByDay = new Map<string, number>();
+    for (const r of resetRows) {
+      if (!withinWindow(r.date)) continue;
+      if (r.completed) {
+        resetByDay.set(r.date, 1);
+      } else if (!resetByDay.has(r.date)) {
+        resetByDay.set(r.date, 0);
+      }
+    }
+    const resetDaily = [...resetByDay.entries()]
+      .map(([date, value]) => ({ date, value }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Streak is computed on completed resets across all time (not just a year).
+    const allDone = new Set(resetRows.filter((r) => r.completed).map((r) => r.date));
+    const currentStreak = computeCurrentStreak(allDone, todayKey);
+    const sortedDone = [...allDone].sort();
+    let longestStreak = 0;
+    let run = 0;
+    let prevDate: string | null = null;
+    for (const d of sortedDone) {
+      const diff =
+        prevDate === null
+          ? 0
+          : Math.round(
+              (new Date(d).getTime() - new Date(prevDate).getTime()) / 86400000,
+            );
+      run = diff === 1 ? run + 1 : 1;
+      if (run > longestStreak) longestStreak = run;
+      prevDate = d;
+    }
+
+    // ---- Games --------------------------------------------------------------
+    const playsRows = playsRes.data ?? [];
+    const gameMap = new Map<string, number>();
+    for (const r of playsRows) {
+      const game = r.game || "game";
+      gameMap.set(game, (gameMap.get(game) ?? 0) + 1);
+    }
+    const games = [...gameMap.entries()]
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // ---- Active days --------------------------------------------------------
+    const activeSet = new Set<string>([...xpByDay.keys(), ...resetByDay.keys()]);
+    for (const p of wellbeing) activeSet.add(p.date);
+    for (const p of focusDaily) activeSet.add(p.date);
+    for (const p of journalDaily) activeSet.add(p.date);
+    for (const p of habitDaily) activeSet.add(p.date);
+    for (const r of playsRows) {
+      const day = (r.played_at ?? "").slice(0, 10);
+      if (day) activeSet.add(day);
+    }
+
+    return {
+      summary: {
+        totalXp,
+        currentStreak,
+        longestStreak,
+        activeDays: activeSet.size,
+        resetsCompleted: resetRows.filter((r) => r.completed).length,
+        focusSessions: focusRows.length,
+        focusMinutes: focusRows.reduce((sum, r) => sum + (r.duration_minutes ?? 0), 0),
+        journalEntries: journalRows.length,
+        habitsLogged: habitRows.length,
+        gamePlays: playsRows.length,
+        questsCompleted: questRes.data?.length ?? 0,
+        badgesEarned: badgesRes.data?.length ?? 0,
+        mindGymCompletions: mindGymRes.data?.length ?? 0,
+        lessonsCompleted: learningRes.data?.length ?? 0,
+        goalsAchieved: goalsRes.data?.length ?? 0,
+      },
+      xpDaily,
+      xpBySource,
+      wellbeing,
+      focusDaily,
+      journalDaily,
+      journalTypeBreakdown,
+      habitDaily,
+      resetDaily,
+      games,
+    };
   });
 

@@ -334,8 +334,10 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          distractions: number
           duration_minutes: number
           id: string
+          notes: string | null
           started_at: string
           status: string
           task: string | null
@@ -345,8 +347,10 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          distractions?: number
           duration_minutes?: number
           id?: string
+          notes?: string | null
           started_at?: string
           status?: string
           task?: string | null
@@ -356,13 +360,48 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          distractions?: number
           duration_minutes?: number
           id?: string
+          notes?: string | null
           started_at?: string
           status?: string
           task?: string | null
           user_id?: string
           xp_awarded?: number
+        }
+        Relationships: []
+      }
+      focus_plans: {
+        Row: {
+          brain_dump: string | null
+          created_at: string
+          date: string
+          id: string
+          tasks: Json
+          top_3: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brain_dump?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          tasks?: Json
+          top_3?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brain_dump?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          tasks?: Json
+          top_3?: Json
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

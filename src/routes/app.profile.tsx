@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { BADGES, MEMORIES, USER } from "@/lib/mock-data";
+import { BADGES, USER } from "@/lib/mock-data";
 import { useNuMind } from "@/lib/numind-store";
-import { useMyStats, useMyBadges } from "@/lib/server-data";
+import { useMyStats, useMyBadges, useMyMemories } from "@/lib/server-data";
 import { PageHeader, SoftCard, StatTile, SectionTitle, CTALink } from "@/components/numind/ui-kit";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ function ProfilePage() {
   const { xp, streak, longestStreak, levelName, levelEmoji, levelIndex, gardenStage } = useNuMind();
   const { data: stats } = useMyStats();
   const { data: serverBadges } = useMyBadges();
+  const { data: myMemories } = useMyMemories();
   const [avatar, setAvatar] = useState(USER.avatar);
   const [nickname, setNickname] = useState(USER.nickname);
 
@@ -50,6 +51,8 @@ function ProfilePage() {
         slug: b.slug,
       }))
     : BADGES.map((b) => ({ emoji: b.emoji, name: b.name, earned: b.earned, slug: b.id }));
+
+  const favMemories = (myMemories ?? []).filter((m) => m.favorite).slice(0, 2);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -119,13 +122,19 @@ function ProfilePage() {
 
       <section className="mt-6">
         <SectionTitle>Favourite memories</SectionTitle>
-        <ul className="grid gap-2">
-          {MEMORIES.slice(0, 2).map((m) => (
-            <li key={m.id} className="card-soft p-4 text-sm">
-              {m.emoji} {m.title}
-            </li>
-          ))}
-        </ul>
+        {favMemories.length ? (
+          <ul className="grid gap-2">
+            {favMemories.map((m) => (
+              <li key={m.id} className="card-soft p-4 text-sm">
+                {m.emoji ?? "🌸"} {m.title}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="card-soft p-4 text-sm text-muted-foreground">
+            Pin or favourite a memory on Memory Lane and it'll live here.
+          </p>
+        )}
         <CTALink to="/app/memory-lane" variant="soft" className="mt-4">
           Open Memory Lane
         </CTALink>
