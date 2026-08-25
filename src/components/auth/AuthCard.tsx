@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { Icon } from "@/components/numind/icon";
 
 export function AuthCard({
   title,
@@ -17,7 +18,7 @@ export function AuthCard({
       <div className="mx-auto w-full max-w-md">
         <Link to="/" className="focus-ring mx-auto flex w-fit items-center gap-2">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-lg" aria-hidden>
-            🧠
+            <Icon symbol="Brain" size={20} className="text-navy" />
           </span>
           <span className="text-xl font-bold">NuMind</span>
         </Link>

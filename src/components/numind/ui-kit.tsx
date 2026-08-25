@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Icon } from "./icon";
 
 /* ---------------- Gamification primitives ---------------- */
 
@@ -12,7 +13,7 @@ export function XPBadge({ xp, className }: { xp: number; className?: string }) {
         className,
       )}
     >
-      <span aria-hidden>⭐</span>
+      <Icon symbol="Star" size={13} fill className="text-sun" />
       <span>+{xp} XP</span>
     </span>
   );
@@ -21,7 +22,7 @@ export function XPBadge({ xp, className }: { xp: number; className?: string }) {
 export function LevelBadge({ level, name, emoji }: { level: number; name: string; emoji: string }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground">
-      <span aria-hidden>{emoji}</span>
+      <Icon symbol={emoji} size={15} />
       Level {level} — {name}
     </span>
   );
@@ -30,7 +31,7 @@ export function LevelBadge({ level, name, emoji }: { level: number; name: string
 export function StreakBadge({ days }: { days: number }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-coral/20 px-3 py-1.5 text-xs font-semibold text-foreground">
-      <span aria-hidden>🔥</span> {days}-day streak
+      <Icon symbol="Flame" size={16} className="text-coral" /> {days}-day streak
     </span>
   );
 }
@@ -149,6 +150,15 @@ const TONE_BG: Record<string, string> = {
   coral: "bg-coral/18",
 };
 
+const TONE_TEXT: Record<string, string> = {
+  teal: "text-teal",
+  cyan: "text-cyan",
+  lavender: "text-lavender",
+  mint: "text-mint",
+  sun: "text-sun",
+  coral: "text-coral",
+};
+
 export function ToneIcon({
   emoji,
   tone = "teal",
@@ -158,10 +168,12 @@ export function ToneIcon({
   tone?: keyof typeof TONE_BG | string;
   size?: "sm" | "md" | "lg";
 }) {
-  const s = size === "lg" ? "h-16 w-16 text-3xl" : size === "sm" ? "h-9 w-9 text-lg" : "h-12 w-12 text-2xl";
+  const box =
+    size === "lg" ? "h-16 w-16" : size === "sm" ? "h-9 w-9" : "h-12 w-12";
+  const iconSize = size === "lg" ? 32 : size === "sm" ? 18 : 24;
   return (
-    <span aria-hidden className={cn("grid place-items-center rounded-2xl", TONE_BG[tone] ?? "bg-teal/15", s)}>
-      {emoji}
+    <span aria-hidden className={cn("grid place-items-center rounded-2xl", TONE_BG[tone] ?? "bg-teal/15", box)}>
+      <Icon symbol={emoji} size={iconSize} className={TONE_TEXT[tone] ?? "text-teal"} />
     </span>
   );
 }
@@ -195,7 +207,9 @@ export function PageHeader({
     <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="text-2xl font-bold sm:text-3xl">
-          {emoji ? <span aria-hidden>{emoji} </span> : null}
+          {emoji ? (
+            <Icon symbol={emoji} size={28} className="mr-2 inline-block -translate-y-0.5 align-middle" />
+          ) : null}
           {title}
         </h1>
         {subtitle ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</p> : null}
@@ -227,8 +241,8 @@ export function EmptyState({
 }) {
   return (
     <div className="card-soft grid place-items-center gap-3 px-6 py-14 text-center">
-      <div className="grid h-20 w-20 place-items-center rounded-full bg-garden text-4xl" aria-hidden>
-        {emoji}
+      <div className="grid h-20 w-20 place-items-center rounded-full bg-garden" aria-hidden>
+        <Icon symbol={emoji} size={40} className="text-mint" />
       </div>
       <h3 className="text-lg font-bold">{title}</h3>
       <p className="max-w-sm text-sm text-muted-foreground">{message}</p>
@@ -250,9 +264,7 @@ export function LoadingState({ rows = 3 }: { rows?: number }) {
 export function ErrorState({ onRetry }: { onRetry?: () => void }) {
   return (
     <div className="card-soft grid place-items-center gap-3 px-6 py-12 text-center">
-      <span className="text-4xl" aria-hidden>
-        🌥
-      </span>
+      <Icon symbol="CloudFog" size={44} />
       <h3 className="text-lg font-bold">That didn't load</h3>
       <p className="text-sm text-muted-foreground">No worries — let's try that again.</p>
       {onRetry ? (
@@ -267,7 +279,7 @@ export function ErrorState({ onRetry }: { onRetry?: () => void }) {
 export function LockedPill({ label = "NuMind+" }: { label?: string }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-grape/15 px-2.5 py-1 text-xs font-semibold text-grape">
-      <span aria-hidden>🔒</span> {label}
+      <Icon symbol="Lock" size={12} /> {label}
     </span>
   );
 }

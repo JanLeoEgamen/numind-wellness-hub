@@ -205,6 +205,7 @@ export const getMyStats = createServerFn({ method: "POST" })
       },
       dailyRewardClaimed: (rewardRes.data?.length ?? 0) > 0,
     };
+  });
 
 export type UpdateProfileInput = {
   nickname?: string;
@@ -294,8 +295,6 @@ export const completeMyGoal = createServerFn({ method: "POST" })
       .eq("user_id", userId);
     if (error) throw new Error(error.message);
     return { ok: true };
-  });
-
   });
 
 // ---------------------------------------------------------------------------
@@ -405,7 +404,7 @@ export const submitDailyReset = createServerFn({ method: "POST" })
         description: `You showed up on ${date} — that was the first step.`,
         sourceType: "daily_reset",
         sourceId: resetId ?? null,
-        emoji: "🌞",
+        emoji: "Sun",
       });
     };
 
@@ -445,7 +444,7 @@ export const submitDailyReset = createServerFn({ method: "POST" })
           description: `${streak} days of showing up for yourself — that's something to hold onto.`,
           sourceType: "streak",
           sourceId: resetId,
-          emoji: "🔥",
+          emoji: "Flame",
         });
       }
     };
@@ -680,7 +679,7 @@ export const completeMindGymActivity = createServerFn({ method: "POST" })
             description: total === 100 ? "A hundred sessions of showing up." : "A quiet win to hold onto.",
             sourceType: "mind_gym",
             sourceId: data.activityId,
-            emoji: "🧘",
+            emoji: "PersonStanding",
           });
         }
       } catch (err) {
@@ -1056,7 +1055,7 @@ export const getCommunityFeed = createServerFn({ method: "POST" })
         ...p,
         isMine: p.user_id === userId,
         authorName: displayNameFor(p),
-        avatar: !p.anonymous ? (prof?.avatar ?? "🌿") : "🕊️",
+        avatar: !p.anonymous ? (prof?.avatar ?? "Sprout") : "Bird",
         reactions: counts.get(p.id) ?? {},
         myReaction: [...(myReactions.get(p.id) ?? [])],
       };
@@ -1285,7 +1284,7 @@ export const getMyGarden = createServerFn({ method: "POST" })
         id: gi?.id ?? p.item_id,
         slug: gi?.slug ?? "",
         name: gi?.name ?? "Garden item",
-        emoji: gi?.emoji ?? "🌱",
+        emoji: gi?.emoji ?? "Sprout",
         itemType: gi?.item_type ?? "decoration",
         placed: p.placed,
       };
@@ -1301,19 +1300,19 @@ export const getMyGarden = createServerFn({ method: "POST" })
       .limit(6);
 
     const sourceEmoji: Record<string, string> = {
-      daily_reset: "🌞",
-      mind_gym: "🧘",
-      focus: "⚡",
-      habit_goal: "💧",
-      journal: "📖",
-      quest: "🏆",
-      learning: "🎓",
-      daily_reward: "🎁",
+      daily_reset: "Sun",
+      mind_gym: "PersonStanding",
+      focus: "Zap",
+      habit_goal: "Droplets",
+      journal: "BookOpen",
+      quest: "Trophy",
+      learning: "GraduationCap",
+      daily_reward: "Gift",
     };
 
     const recent: MyGardenRecent[] = (recentXp ?? []).map((x) => ({
       id: x.id,
-      emoji: sourceEmoji[x.source_type] ?? "⭐",
+      emoji: sourceEmoji[x.source_type] ?? "Star",
       title: x.description ?? "Garden growth",
       gardenXp: Math.round((x.amount ?? 0) / 2),
       createdAt: x.created_at,
@@ -2471,7 +2470,7 @@ function buildNumiSystemPrompt(ctx: NumiContext, intent: string | null): string 
 function numiCrisisReply(message: string): string | null {
   const lower = message.toLowerCase();
   if (/(kill myself|end my life|suicide|suicidal|self-?harm|hurt myself|want to die)/.test(lower)) {
-    return "I'm really glad you told me, and I care about your safety. I'm not equipped to be your crisis support, so please reach out to someone who can help right now. If you're in the US, call or text 988 (Suicide & Crisis Lifeline) or text HOME to 741741. If you're elsewhere, contact your local emergency services or crisis line. You matter, and help is available. 🤍";
+    return "I'm really glad you told me, and I care about your safety. I'm not equipped to be your crisis support, so please reach out to someone who can help right now. If you're in the US, call or text 988 (Suicide & Crisis Lifeline) or text HOME to 741741. If you're elsewhere, contact your local emergency services or crisis line. You matter, and help is available.";
   }
   return null;
 }
@@ -2510,7 +2509,7 @@ function numiFallbackReply(ctx: NumiContext, intent: string | null): string {
         ? `${greet}, you've shown up ${ctx.currentStreak} day${ctx.currentStreak === 1 ? "" : "s"} in a row. That's not luck — that's you choosing yourself, repeatedly. One small thing today is plenty.`
         : "One small thing today is plenty — and it counts. What's the easiest win you can grab in the next five minutes?";
     case "relax":
-      return "Let's do 60 seconds of breathing together. In for 4, hold for 4, out for 6. I'll be right here when you're done. 🌬";
+      return "Let's do 60 seconds of breathing together. In for 4, hold for 4, out for 6. I'll be right here when you're done.";
     case "focus":
       return "Try a 15-minute Focus Sprint. Pick one task, silence the rest, and I'll keep the timer. Want me to point you to Mind Gym?";
     case "goal":
@@ -2521,12 +2520,12 @@ function numiFallbackReply(ctx: NumiContext, intent: string | null): string {
       return "Here's a prompt: what's one thing that went better than you expected this week?";
     case "celebrate":
       return ctx.gardenStage != null
-        ? `Here's what you've built: ${ctx.xpTotal} XP, ${ctx.levelName} level ${ctx.levelNumber}, and a garden at stage ${ctx.gardenStage}. That's real progress. 🌳`
-        : `Here's what you've built: ${ctx.xpTotal} XP and ${ctx.levelName} level ${ctx.levelNumber}. That's real progress. 🌱`;
+        ? `Here's what you've built: ${ctx.xpTotal} XP, ${ctx.levelName} level ${ctx.levelNumber}, and a garden at stage ${ctx.gardenStage}. That's real progress.`
+        : `Here's what you've built: ${ctx.xpTotal} XP and ${ctx.levelName} level ${ctx.levelNumber}. That's real progress.`;
     case "wind_down":
       return "Screens down, lights low. Try the Evening Wind Down in Mind Gym — six minutes and your brain gets the hint.";
     default:
-      return `I hear you${name ? `, ${name}` : ""}. Let's keep it small: pick one thing from Today's Journey and I'll cheer you on. 🌱`;
+      return `I hear you${name ? `, ${name}` : ""}. Let's keep it small: pick one thing from Today's Journey and I'll cheer you on.`;
   }
 }
 
@@ -3333,14 +3332,14 @@ export type RewardCategory = {
 };
 
 export const REWARD_CATEGORIES: RewardCategory[] = [
-  { id: "garden_decoration", label: "Garden Decorations", emoji: "🌸" },
-  { id: "numi_accessory", label: "Numi Accessories", emoji: "🤖" },
-  { id: "theme", label: "Themes", emoji: "🎨" },
-  { id: "avatar_accessory", label: "Avatar Accessories", emoji: "👤" },
-  { id: "badge_frame", label: "Badge Frames", emoji: "🏅" },
-  { id: "sticker", label: "Stickers", emoji: "✨" },
-  { id: "relaxation_content", label: "Relaxation Content", emoji: "🌙" },
-  { id: "seasonal", label: "Seasonal Items", emoji: "🎁" },
+  { id: "garden_decoration", label: "Garden Decorations", emoji: "Flower2" },
+  { id: "numi_accessory", label: "Numi Accessories", emoji: "Bot" },
+  { id: "theme", label: "Themes", emoji: "Palette" },
+  { id: "avatar_accessory", label: "Avatar Accessories", emoji: "UserRound" },
+  { id: "badge_frame", label: "Badge Frames", emoji: "Medal" },
+  { id: "sticker", label: "Stickers", emoji: "Sparkles" },
+  { id: "relaxation_content", label: "Relaxation Content", emoji: "Moon" },
+  { id: "seasonal", label: "Seasonal Items", emoji: "Gift" },
 ];
 
 export type MarketplaceReward = {
@@ -3422,7 +3421,7 @@ async function getRewardsMarketplaceSummary(
       description: r.description,
       rewardType: r.reward_type,
       categoryLabel: cat?.label ?? r.reward_type,
-      categoryEmoji: cat?.emoji ?? "🎁",
+      categoryEmoji: cat?.emoji ?? "Gift",
       emoji: r.emoji,
       xpCost: r.xp_cost,
       unlockLevel: r.unlock_level,

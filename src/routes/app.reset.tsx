@@ -5,6 +5,7 @@ import { useNuMind } from "@/lib/numind-store";
 import { submitDailyReset, saveMindCheck, getMindChecks } from "@/lib/server-functions";
 import type { MindCheckSnapshot } from "@/lib/server-functions";
 import { PageHeader, SoftCard, DisclaimerNote, XPBadge, ToneIcon } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/reset")({
@@ -20,26 +21,26 @@ export const Route = createFileRoute("/app/reset")({
 });
 
 const MOODS = [
-  { emoji: "😁", label: "Amazing" },
-  { emoji: "🙂", label: "Good" },
-  { emoji: "😐", label: "Okay" },
-  { emoji: "😔", label: "Tough Day" },
+  { emoji: "SmilePlus", label: "Amazing" },
+  { emoji: "Smile", label: "Good" },
+  { emoji: "Meh", label: "Okay" },
+  { emoji: "Frown", label: "Tough Day" },
 ];
 
 const INTENTIONS = [
-  { emoji: "🎯", label: "Productivity" },
-  { emoji: "🧘", label: "Calm" },
-  { emoji: "🏃", label: "Movement" },
-  { emoji: "💧", label: "Hydration" },
-  { emoji: "😊", label: "Positivity" },
-  { emoji: "❤️", label: "Self-Care" },
-  { emoji: "📖", label: "Learning" },
+  { emoji: "Target", label: "Productivity" },
+  { emoji: "PersonStanding", label: "Calm" },
+  { emoji: "Footprints", label: "Movement" },
+  { emoji: "Droplets", label: "Hydration" },
+  { emoji: "Smile", label: "Positivity" },
+  { emoji: "Heart", label: "Self-Care" },
+  { emoji: "BookOpen", label: "Learning" },
 ];
 
 const CHECKS = [
-  { checkType: "mood" as const, emoji: "💙", name: "Mood Check", desc: "Notice how today actually feels.", tone: "cyan" },
-  { checkType: "worry" as const, emoji: "🌿", name: "Worry Check", desc: "Name what's on your mind.", tone: "mint" },
-  { checkType: "focus" as const, emoji: "⚡", name: "Focus Check", desc: "See where your attention is.", tone: "lavender" },
+  { checkType: "mood" as const, emoji: "Heart", name: "Mood Check", desc: "Notice how today actually feels.", tone: "cyan" },
+  { checkType: "worry" as const, emoji: "Sprout", name: "Worry Check", desc: "Name what's on your mind.", tone: "mint" },
+  { checkType: "focus" as const, emoji: "Zap", name: "Focus Check", desc: "See where your attention is.", tone: "lavender" },
 ];
 
 type CheckType = "mood" | "worry" | "focus";
@@ -102,7 +103,7 @@ function ResetPage() {
           : { checkType: "focus" as const, focus: rating, note: note || null };
     try {
       await saveMindCheck({ data: payload });
-      toast.success("Reflection saved 🌱");
+      toast.success("Reflection saved");
       setSavedChecks((cur) => {
         const base = cur ?? { date: "", mood: null, energy: null, stress: null, focus: null, note: null };
         if (checkOpen === "mood") return { ...base, mood: rating };
@@ -121,7 +122,7 @@ function ResetPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        emoji="🌞"
+        emoji="Sun"
         title="Daily Reset"
         subtitle="Take one minute for yourself."
         action={<XPBadge xp={20} />}
@@ -130,13 +131,13 @@ function ResetPage() {
       {done ? (
         <SoftCard className="animate-pop bg-hero text-center">
           <p className="text-5xl" aria-hidden>
-            🎉
+            <Icon symbol="PartyPopper" size={48} />
           </p>
           <h2 className="mt-3 text-xl font-bold">Reset complete!</h2>
           <p className="mt-1 text-sm text-muted-foreground">You showed up for yourself today.</p>
           <p className="mt-4 inline-flex rounded-full bg-sun/25 px-4 py-1.5 text-sm font-bold">+20 XP</p>
           <p className="mt-4 text-sm text-muted-foreground">
-            See you tomorrow morning — your streak is safe. 🌱
+            See you tomorrow morning — your streak is safe.
           </p>
         </SoftCard>
       ) : (
@@ -155,10 +156,10 @@ function ResetPage() {
                   )}
                 >
                   <span className="text-3xl" aria-hidden>
-                    {m.emoji}
+                    <Icon symbol={m.emoji} size={32} />
                   </span>
                   <p className="mt-2 text-sm font-semibold">{m.label}</p>
-                  {mood === m.label ? <p className="text-[11px] text-muted-foreground">Selected ✓</p> : null}
+                  {mood === m.label ? <p className="text-[11px] text-muted-foreground">Selected</p> : null}
                 </button>
               ))}
             </div>
@@ -213,9 +214,9 @@ function ResetPage() {
                   onClick={() => setSleep(n)}
                   aria-label={`${n} of 5 stars`}
                   aria-pressed={sleep === n}
-                  className="focus-ring text-3xl transition hover:scale-110"
+                  className="focus-ring transition hover:scale-110"
                 >
-                  <span aria-hidden>{n <= sleep ? "⭐" : "☆"}</span>
+                  <Icon symbol="Star" size={30} fill={n <= sleep} className={n <= sleep ? "text-sun" : "text-muted"} />
                 </button>
               ))}
             </div>
@@ -236,7 +237,10 @@ function ResetPage() {
                       : "border-border bg-muted/40 hover:bg-accent",
                   )}
                 >
-                  <span aria-hidden>{i.emoji}</span> {i.label}
+                  <span aria-hidden>
+                    <Icon symbol={i.emoji} size={16} className="mr-1 inline-block align-[-2px]" />
+                  </span>
+                  {i.label}
                 </button>
               ))}
             </div>
@@ -278,7 +282,7 @@ function ResetPage() {
               <p className="text-sm text-muted-foreground">{c.desc}</p>
               {savedValueFor(c.checkType) != null ? (
                 <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-teal/15 px-2.5 py-0.5 text-xs font-semibold text-teal">
-                  ✓ {savedValueFor(c.checkType)}/5 saved today
+                  <Icon symbol="Check" size={12} strokeWidth={2.5} /> {savedValueFor(c.checkType)}/5 saved today
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground/70">Not saved yet</p>

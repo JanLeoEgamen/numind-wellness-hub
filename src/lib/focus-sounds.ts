@@ -6,10 +6,10 @@
 export type FocusSound = "off" | "rain" | "waves" | "white" | "brown";
 
 const SOUND_LABELS: Record<Exclude<FocusSound, "off">, string> = {
-  rain: "🌧 Rain",
-  waves: "🌊 Waves",
-  white: "❄ White",
-  brown: "🟤 Brown",
+  rain: "Rain",
+  waves: "Waves",
+  white: "White",
+  brown: "Brown",
 };
 
 function noiseBuffer(ac: AudioContext, kind: "white" | "brown"): AudioBuffer {

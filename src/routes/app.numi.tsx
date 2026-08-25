@@ -13,6 +13,7 @@ import {
   sendNumiMessage,
 } from "@/lib/server-functions";
 import { NumiAvatar, PageHeader, DisclaimerNote } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { useNuMind } from "@/lib/numind-store";
 import { cn } from "@/lib/utils";
 
@@ -36,14 +37,14 @@ export const Route = createFileRoute("/app/numi")({
 });
 
 const QUICK = [
-  { emoji: "😊", label: "Motivate Me", intent: "motivate" },
-  { emoji: "🧘", label: "Help Me Relax", intent: "relax" },
-  { emoji: "⚡", label: "Help Me Focus", intent: "focus" },
-  { emoji: "🎯", label: "Help Me Set a Goal", intent: "goal" },
-  { emoji: "📅", label: "Plan My Day", intent: "plan" },
-  { emoji: "💭", label: "Journal With Me", intent: "journal" },
-  { emoji: "🌟", label: "Celebrate My Progress", intent: "celebrate" },
-  { emoji: "🌙", label: "Help Me Wind Down", intent: "wind_down" },
+  { icon: "Smile", label: "Motivate Me", intent: "motivate" },
+  { icon: "PersonStanding", label: "Help Me Relax", intent: "relax" },
+  { icon: "Zap", label: "Help Me Focus", intent: "focus" },
+  { icon: "Target", label: "Help Me Set a Goal", intent: "goal" },
+  { icon: "Calendar", label: "Plan My Day", intent: "plan" },
+  { icon: "MessageSquareText", label: "Journal With Me", intent: "journal" },
+  { icon: "Sparkles", label: "Celebrate My Progress", intent: "celebrate" },
+  { icon: "Moon", label: "Help Me Wind Down", intent: "wind_down" },
 ];
 
 type Msg = { id: string; from: "numi" | "user"; text: string; source?: string | undefined };
@@ -161,7 +162,7 @@ function NumiPage() {
         {
           id: `numi-err-${Date.now()}`,
           from: "numi",
-          text: "I couldn't reach myself just now — give me a moment and try again. 🌱",
+          text: "I couldn't reach myself just now — give me a moment and try again.",
         },
       ]);
     } finally {
@@ -194,7 +195,7 @@ function NumiPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col">
       <PageHeader
-        emoji="🤖"
+        emoji="Bot"
         title="Meet Numi"
         subtitle="Your AI wellness companion — here to motivate, support, organize and celebrate."
         action={
@@ -233,7 +234,7 @@ function NumiPage() {
                   : "border-border bg-card hover:bg-accent",
               )}
             >
-              💬 {c.title}
+              {c.title}
             </button>
           ))}
         </div>
@@ -250,7 +251,7 @@ function NumiPage() {
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-lavender/40 text-lg"
                   aria-hidden
                 >
-                  {USER.avatar}
+                  <Icon symbol={USER.avatar} size={18} />
                 </span>
               )}
               <div
@@ -290,7 +291,7 @@ function NumiPage() {
               onClick={() => send(q.label, q.intent)}
               className="focus-ring shrink-0 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-medium hover:bg-accent"
             >
-              <span aria-hidden>{q.emoji}</span> {q.label}
+              <Icon symbol={q.icon} size={14} className="mr-1 inline-block align-[-2px]" /> {q.label}
             </button>
           ))}
         </div>

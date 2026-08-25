@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Icon } from "@/components/numind/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   useAdminBroadcast,
@@ -134,7 +135,9 @@ function Admin() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="card-soft max-w-md p-8 text-center">
-          <p className="text-4xl">⚠️</p>
+          <p className="text-4xl">
+            <Icon symbol="TriangleAlert" size={40} />
+          </p>
           <h1 className="mt-3 text-xl font-bold">Can&apos;t open the admin area</h1>
           <p className="mt-2 text-sm text-muted-foreground">{accessError}</p>
           <div className="mt-6 flex justify-center gap-2">
@@ -160,7 +163,9 @@ function Admin() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="card-soft max-w-md p-8 text-center">
-          <p className="text-4xl">🔒</p>
+          <p className="text-4xl">
+            <Icon symbol="Lock" size={40} />
+          </p>
           <h1 className="mt-3 text-xl font-bold">Admins only</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             This area is restricted to NuMind administrators. Your account doesn&apos;t have the admin role yet.
@@ -181,7 +186,9 @@ function Admin() {
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-border bg-sidebar p-4 lg:block">
-        <p className="mb-4 px-2 text-sm font-bold">🧠 NuMind Admin</p>
+        <p className="mb-4 flex items-center gap-2 px-2 text-sm font-bold">
+          <Icon symbol="Brain" size={18} className="text-brand" /> NuMind Admin
+        </p>
         <nav className="grid gap-0.5" aria-label="Admin">
           {NAV.map((s) => (
             <button
@@ -262,7 +269,9 @@ function Pill({ tone, children }: { tone: "mint" | "muted" | "destructive" | "su
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="card-soft p-10 text-center">
-      <p className="text-3xl">🌱</p>
+      <p className="text-3xl">
+        <Icon symbol="Sprout" size={36} className="text-mint" />
+      </p>
       <p className="mt-3 text-sm font-medium">{message}</p>
       <p className="mt-1 text-xs text-muted-foreground">Nothing here yet.</p>
     </div>

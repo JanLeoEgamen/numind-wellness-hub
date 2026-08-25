@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useNuMind } from "@/lib/numind-store";
 import { PageHeader, SoftCard, EmptyState, LoadingState } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 import { REWARD_CATEGORIES } from "@/lib/server-functions";
 import { useRewardsMarketplace, useRedeemReward, useEquipReward } from "@/lib/server-data";
@@ -32,9 +33,9 @@ function RewardsPage() {
   if (isError && !data) {
     return (
       <div className="mx-auto max-w-5xl">
-        <PageHeader emoji="🎁" title="Rewards" subtitle="Earn XP to unlock something special." />
+        <PageHeader emoji="Gift" title="Rewards" subtitle="Earn XP to unlock something special." />
         <EmptyState
-          emoji="🌥"
+          emoji="CloudFog"
           title="That didn't load"
           message="No worries — let's try that again."
           action={
@@ -50,7 +51,7 @@ function RewardsPage() {
   if (isLoading || !data) {
     return (
       <div className="mx-auto max-w-5xl">
-        <PageHeader emoji="🎁" title="Rewards" subtitle="Earn XP to unlock something special." />
+        <PageHeader emoji="Gift" title="Rewards" subtitle="Earn XP to unlock something special." />
         <LoadingState rows={4} />
       </div>
     );
@@ -65,7 +66,7 @@ function RewardsPage() {
         const reward = next.rewards.find((r) => r.id === id);
         if (reward) {
           celebrate({
-            emoji: reward.emoji ?? "🎁",
+            emoji: reward.emoji ?? "Gift",
             title: `${reward.name} unlocked!`,
             message: "It's now in your collection.",
             chain: [`-${reward.xpCost.toLocaleString()} XP`, "Collection updated", "Rewards refreshed"],
@@ -86,12 +87,15 @@ function RewardsPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        emoji="🎁"
+        emoji="Gift"
         title="Rewards"
         subtitle="Earn XP to unlock something special."
         action={
           <div className="text-right">
-            <span className="rounded-full bg-sun/25 px-4 py-2 text-sm font-bold">⭐ {data.balance.toLocaleString()} XP</span>
+            <span className="rounded-full bg-sun/25 px-4 py-2 text-sm font-bold">
+              <Icon symbol="Star" size={14} fill className="mr-1 inline-block align-[-2px] text-sun" />
+              {data.balance.toLocaleString()} XP
+            </span>
             <p className="mt-1 text-xs text-muted-foreground">
               {data.lifetimeXp.toLocaleString()} XP earned · Level {data.level.number}
             </p>
@@ -116,7 +120,7 @@ function RewardsPage() {
       </div>
 
       {list.length === 0 ? (
-        <EmptyState emoji="🎁" title="Nothing here yet" message="Earn XP to unlock something special." />
+        <EmptyState emoji="Gift" title="Nothing here yet" message="Earn XP to unlock something special." />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {list.map((r) => {
@@ -133,12 +137,15 @@ function RewardsPage() {
                     <span className="mx-auto mb-2 rounded-full bg-coral/20 px-3 py-1 text-[11px] font-semibold">Limited time</span>
                   ) : null}
                   <p className="text-4xl" aria-hidden>
-                    {r.owned || (affordable && !locked) ? r.emoji ?? "🎁" : "🔒"}
+                    <Icon symbol={r.owned || (affordable && !locked) ? r.emoji ?? "Gift" : "Lock"} size={40} />
                   </p>
                   <p className="mt-2 font-semibold">{r.name}</p>
                   <p className="text-xs text-muted-foreground">{r.categoryLabel}</p>
                   {r.description ? <p className="mt-1 text-xs text-muted-foreground">{r.description}</p> : null}
-                  <p className="mt-2 text-sm font-bold">⭐ {r.xpCost.toLocaleString()} XP</p>
+                  <p className="mt-2 text-sm font-bold">
+                    <Icon symbol="Star" size={14} fill className="mr-1 inline-block align-[-2px] text-sun" />
+                    {r.xpCost.toLocaleString()} XP
+                  </p>
                   {r.premiumRequired ? (
                     <span className="mx-auto mt-1 rounded-full bg-grape/15 px-3 py-1 text-[11px] font-semibold text-grape">NuMind Plus</span>
                   ) : null}
@@ -152,10 +159,10 @@ function RewardsPage() {
                         r.equipped ? "bg-mint/40" : "bg-muted hover:bg-accent",
                       )}
                     >
-                      {r.equipped ? "Equipped ✓" : "Equip"}
+                      {r.equipped ? "Equipped" : "Equip"}
                     </button>
                   ) : r.owned ? (
-                    <span className="focus-ring mt-4 rounded-full bg-mint/40 px-4 py-2.5 text-sm font-bold">Unlocked ✓</span>
+                    <span className="focus-ring mt-4 rounded-full bg-mint/40 px-4 py-2.5 text-sm font-bold">Unlocked</span>
                   ) : (
                     <button
                       disabled={pending || locked || !affordable}

@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { NOTIFICATIONS } from "@/lib/mock-data";
-import { markNotificationsRead } from "@/lib/server-functions";
-import { useMyNotifications } from "@/lib/server-data";
-import { PageHeader, SoftCard, EmptyState } from "@/components/numind/ui-kit";
+import { useEffect, useRef } from "react";
+import { useMyNotifications, useMarkNotificationsRead } from "@/lib/server-data";
+import { PageHeader, SoftCard, EmptyState, LoadingState } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/notifications")({
@@ -24,93 +23,93 @@ export const Route = createFileRoute("/app/notifications")({
   component: NotificationsPage,
 });
 
-type NotificationView = {
-  id: string;
-  emoji: string;
-  title: string;
-  time: string;
-  unread: boolean;
-  category: string;
-};
-
 const formatTime = (iso?: string) => {
   if (!iso) return "";
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();
   const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
   if (mins < 60) return `${mins} min${mins === 1 ? "" : "s"} ago`;
-  const days = Math.floor(mins / 1440);
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
   if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
+const typeLabel = (type?: string) =>
+  !type ? "Notice" : type.charAt(0).toUpperCase() + type.slice(1);
+
 function NotificationsPage() {
-  const { data: srvNotes } = useMyNotifications();
-  const [items, setItems] = useState<NotificationView[]>(NOTIFICATIONS);
+  const { data: note, isLoading } = useMyNotifications();
+  const markRead = useMarkNotificationsRead();
+  // Tracks the last unread id-signature so the effect marks read exactly once
+  // per incoming batch instead of looping on the invalidate-triggered refetch.
+  const handled = useRef<string>("");
 
+  // Opening the inbox marks everything read, which clears the header badge.
   useEffect(() => {
-    if (!srvNotes?.length) return;
-    setItems(
-      srvNotes.map((n) => ({
-        id: n.id,
-        emoji: n.emoji ?? "🔔",
-        title: n.title,
-        time: formatTime(n.created_at),
-        unread: !n.read,
-        category: n.type ?? "General",
-      })),
-    );
-  }, [srvNotes]);
+    const unread = (note ?? []).filter((n) => !n.read);
+    if (!unread.length) return;
+    const ids = unread.map((n) => n.id);
+    const sig = [...ids].sort().join(",");
+    if (sig === handled.current) return;
+    handled.current = sig;
+    markRead.mutate(ids);
+  }, [note, markRead]);
 
-  const clearAll = () => {
-    markNotificationsRead({ data: {} }).catch(() => {});
-    setItems([]);
-  };
+  const markAllRead = () => markRead.mutate([]);
 
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        emoji="🔔"
+        emoji="Bell"
         title="Notifications"
         subtitle="Nudges, never nagging."
         action={
           <button
-            onClick={clearAll}
-            className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold"
+            onClick={markAllRead}
+            disabled={isLoading || !note?.some((n) => !n.read)}
+            className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold disabled:opacity-50"
           >
-            Clear all
+            Mark all read
           </button>
         }
       />
-      {items.length === 0 ? (
+      {isLoading && !note ? (
+        <LoadingState rows={3} />
+      ) : !note?.length ? (
         <EmptyState
-          emoji="🌤"
+          emoji="CloudSun"
           title="All caught up"
           message="Nothing needs you right now. Enjoy the quiet."
         />
       ) : (
         <ul className="grid gap-2">
-          {items.map((n) => (
+          {note.map((n) => (
             <li key={n.id}>
               <SoftCard
                 className={cn(
-                  "flex items-center gap-3 p-4",
-                  n.unread && "border-teal/50 bg-teal/8",
+                  "flex items-start gap-3 p-4",
+                  !n.read && "border-teal/50 bg-teal/8",
                 )}
               >
                 <span
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-muted text-lg"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-muted"
                   aria-hidden
                 >
-                  {n.emoji}
+                  <Icon symbol={n.emoji ?? "Bell"} size={20} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{n.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {n.category} · {n.time}
+                  {n.message ? (
+                    <p className="mt-0.5 text-sm text-muted-foreground">{n.message}</p>
+                  ) : null}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {typeLabel(n.type)} · {formatTime(n.created_at)}
                   </p>
                 </div>
-                {n.unread ? (
+                {!n.read ? (
                   <span className="h-2.5 w-2.5 rounded-full bg-teal" aria-label="Unread" />
                 ) : null}
               </SoftCard>

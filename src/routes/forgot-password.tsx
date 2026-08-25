@@ -49,7 +49,7 @@ function ForgotPasswordPage() {
     >
       {sent ? (
         <p className="text-sm text-muted-foreground">
-          If that email belongs to a NuMind account, a reset link is on its way. 💌
+          If that email belongs to a NuMind account, a reset link is on its way.
         </p>
       ) : (
         <form onSubmit={onSubmit} className="grid gap-4">

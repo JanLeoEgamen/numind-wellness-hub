@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useNuMind } from "@/lib/numind-store";
 import { useMyStats, useMyNotifications } from "@/lib/server-data";
+import { USER } from "@/lib/mock-data";
 import { NumiAvatar, StreakBadge, ProgressBar } from "@/components/numind/ui-kit";
 import { CelebrationModal } from "@/components/numind/celebration";
 import {
@@ -16,33 +17,34 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { signOut } from "@/hooks/useAuth";
+import { Icon } from "@/components/numind/icon";
 
 const PRIMARY = [
-  { to: "/app", emoji: "🏠", label: "Home" },
-  { to: "/app/reset", emoji: "🌞", label: "Reset" },
-  { to: "/app/mind-gym", emoji: "🧠", label: "Mind Gym" },
-  { to: "/app/quest", emoji: "🏆", label: "Quest" },
-  { to: "/app/numi", emoji: "🤖", label: "Numi" },
+  { to: "/app", icon: "Home", label: "Home" },
+  { to: "/app/reset", icon: "Sun", label: "Reset" },
+  { to: "/app/mind-gym", icon: "Brain", label: "Mind Gym" },
+  { to: "/app/quest", icon: "Trophy", label: "Quest" },
+  { to: "/app/numi", icon: "Bot", label: "Numi" },
 ];
 
 const MORE = [
-  { to: "/app/wellness", emoji: "💧", label: "My Wellness" },
-  { to: "/app/journal", emoji: "📖", label: "My Journal" },
-  { to: "/app/memory-lane", emoji: "🌸", label: "Memory Lane" },
-  { to: "/app/together", emoji: "💙", label: "Together" },
-  { to: "/app/learning", emoji: "🎓", label: "Learning Lounge" },
-  { to: "/app/journey", emoji: "✨", label: "My Journey" },
-  { to: "/app/analytics", emoji: "📊", label: "My Analytics" },
-  { to: "/app/rewards", emoji: "🎁", label: "Rewards" },
-  { to: "/app/garden", emoji: "🌱", label: "My Garden" },
-  { to: "/app/focus", emoji: "⚡", label: "Focus Zone" },
-  { to: "/app/play", emoji: "🎮", label: "Healthy Play" },
-  { to: "/app/profile", emoji: "👤", label: "Profile" },
-  { to: "/app/settings", emoji: "⚙️", label: "Settings" },
-  { to: "/app/safety", emoji: "🆘", label: "Safety" },
+  { to: "/app/wellness", icon: "Droplets", label: "My Wellness" },
+  { to: "/app/journal", icon: "BookOpen", label: "My Journal" },
+  { to: "/app/memory-lane", icon: "Flower2", label: "Memory Lane" },
+  { to: "/app/together", icon: "Heart", label: "Together" },
+  { to: "/app/learning", icon: "GraduationCap", label: "Learning Lounge" },
+  { to: "/app/journey", icon: "Sparkles", label: "My Journey" },
+  { to: "/app/analytics", icon: "ChartColumn", label: "My Analytics" },
+  { to: "/app/rewards", icon: "Gift", label: "Rewards" },
+  { to: "/app/garden", icon: "Sprout", label: "My Garden" },
+  { to: "/app/focus", icon: "Zap", label: "Focus Zone" },
+  { to: "/app/play", icon: "Gamepad2", label: "Healthy Play" },
+  { to: "/app/profile", icon: "UserRound", label: "Profile" },
+  { to: "/app/settings", icon: "Settings", label: "Settings" },
+  { to: "/app/safety", icon: "LifeBuoy", label: "Safety" },
 ];
 
-function NavItem({ to, emoji, label, active }: { to: string; emoji: string; label: string; active: boolean }) {
+function NavItem({ to, icon, label, active }: { to: string; icon: string; label: string; active: boolean }) {
   return (
     <Link
       to={to}
@@ -52,9 +54,7 @@ function NavItem({ to, emoji, label, active }: { to: string; emoji: string; labe
         active ? "bg-brand text-navy shadow-soft" : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
-      <span aria-hidden className="text-base">
-        {emoji}
-      </span>
+      <Icon symbol={icon} size={18} />
       {label}
     </Link>
   );
@@ -63,7 +63,9 @@ function NavItem({ to, emoji, label, active }: { to: string; emoji: string; labe
 export function AppShell({ children, rightPanel }: { children: ReactNode; rightPanel?: ReactNode }) {
   const { pathname } = useRouterState({ select: (s) => s.location });
   const { xp, xpInLevel, xpForLevel, levelName, levelEmoji, streak, levelIndex } = useNuMind();
+  const { data: srvStats } = useMyStats();
   const { data: srvNotes } = useMyNotifications();
+  const avatar = srvStats?.profile?.avatar ?? USER.avatar;
   const [moreOpen, setMoreOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -92,7 +94,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
         <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col border-r border-border bg-sidebar px-4 py-6 lg:flex">
           <Link to="/" className="focus-ring mb-6 flex items-center gap-2 px-2">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg" aria-hidden>
-              🧠
+              <Icon symbol="Brain" size={20} className="text-navy" />
             </span>
             <span className="text-lg font-bold">NuMind</span>
           </Link>
@@ -112,7 +114,8 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
 
           <div className="mt-auto rounded-3xl bg-muted/60 p-4">
             <p className="text-xs font-semibold">
-              {levelEmoji} Level {levelIndex + 1} — {levelName}
+              <Icon symbol={levelEmoji} size={14} className="mr-1 inline-block align-[-2px]" />
+              Level {levelIndex + 1} — {levelName}
             </p>
             <ProgressBar className="mt-2" value={xpInLevel} max={xpForLevel} />
             <p className="mt-2 text-xs text-muted-foreground">
@@ -126,7 +129,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
           <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur sm:px-6">
             <Link to="/app" className="focus-ring flex items-center gap-2 lg:hidden">
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-base" aria-hidden>
-                🧠
+                <Icon symbol="Brain" size={16} className="text-navy" />
               </span>
               <span className="font-bold">NuMind</span>
             </Link>
@@ -135,14 +138,14 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
                 <StreakBadge days={streak} />
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-sun/20 px-3 py-1.5 text-xs font-semibold">
-                <span aria-hidden>⭐</span> {xp.toLocaleString()} XP
+                <Icon symbol="Star" size={14} fill className="text-sun" /> {xp.toLocaleString()} XP
               </span>
               <Link
                 to="/app/notifications"
                 aria-label={`Notifications, ${unreadCount} unread`}
                 className="focus-ring relative grid h-9 w-9 place-items-center rounded-full bg-muted hover:bg-accent"
               >
-                <span aria-hidden>🔔</span>
+                <Icon symbol="Bell" size={18} />
                 {unreadCount > 0 ? (
                   <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-coral px-1 text-[10px] font-bold text-navy">
                     {unreadCount > 99 ? "99+" : unreadCount}
@@ -154,7 +157,9 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
                 aria-label="Your profile"
                 className="focus-ring grid h-9 w-9 place-items-center rounded-full bg-lavender/40 text-lg"
               >
-                <span aria-hidden>{USER.avatar}</span>
+                <span aria-hidden>
+                  <Icon symbol={avatar} size={18} />
+                </span>
               </Link>
               <button
                 type="button"
@@ -163,7 +168,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
                 title="Log out"
                 className="focus-ring grid h-9 w-9 place-items-center rounded-full bg-muted hover:bg-accent"
               >
-                <span aria-hidden>🚪</span>
+                <Icon symbol="DoorOpen" size={18} />
               </button>
             </div>
           </header>
@@ -195,9 +200,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
                     active ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
-                  <span aria-hidden className={cn("text-lg transition", active && "scale-110")}>
-                    {i.emoji}
-                  </span>
+                  <Icon symbol={i.icon} size={20} className={cn("transition", active && "scale-110")} />
                   {i.label}
                 </Link>
               </li>
@@ -243,7 +246,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
                     onClick={() => setMoreOpen(false)}
                     className="focus-ring flex items-center gap-2 rounded-2xl bg-muted/60 px-3 py-3 text-sm font-medium"
                   >
-                    <span aria-hidden>{i.emoji}</span>
+                    <Icon symbol={i.icon} size={20} />
                     {i.label}
                   </Link>
                 </li>
@@ -264,7 +267,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
         <AlertDialogContent className="max-w-sm rounded-3xl text-center">
           <AlertDialogHeader className="items-center text-center">
             <span className="text-4xl" aria-hidden>
-              👋
+              <Icon symbol="Hand" size={44} />
             </span>
             <AlertDialogTitle>Log out of NuMind?</AlertDialogTitle>
             <AlertDialogDescription>

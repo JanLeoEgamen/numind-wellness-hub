@@ -14,15 +14,15 @@ export const Route = createFileRoute("/app/safety")({
 });
 
 const TOOLS = [
-  { emoji: "🖐", name: "5-4-3-2-1 Grounding", desc: "Come back to the room, one sense at a time.", tone: "mint" },
-  { emoji: "🌬", name: "Slow Breathing", desc: "In for 4, hold 4, out for 6. Three minutes.", tone: "teal" },
-  { emoji: "🫖", name: "Calming Exercise", desc: "A short, gentle sequence to settle.", tone: "lavender" },
+  { emoji: "Hand", name: "5-4-3-2-1 Grounding", desc: "Come back to the room, one sense at a time.", tone: "mint" },
+  { emoji: "Wind", name: "Slow Breathing", desc: "In for 4, hold 4, out for 6. Three minutes.", tone: "teal" },
+  { emoji: "Coffee", name: "Calming Exercise", desc: "A short, gentle sequence to settle.", tone: "lavender" },
 ];
 
 function SafetyPage() {
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader emoji="🆘" title="Need Help?" subtitle="A calm place to pause. Take what's useful, leave the rest." />
+      <PageHeader emoji="LifeBuoy" title="Need Help?" subtitle="A calm place to pause. Take what's useful, leave the rest." />
 
       <ul className="grid gap-3 sm:grid-cols-3">
         {TOOLS.map((t) => (

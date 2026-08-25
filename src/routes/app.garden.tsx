@@ -14,6 +14,7 @@ import {
   EmptyState,
 } from "@/components/numind/ui-kit";
 import { cn } from "@/lib/utils";
+import { Icon } from "@/components/numind/icon";
 
 export const Route = createFileRoute("/app/garden")({
   head: () => ({
@@ -66,19 +67,19 @@ function GardenPage() {
   // Decorative fallback only while the user has nothing placed yet.
   const gardenEmojis =
     placedItems.length > 0
-      ? placedItems.map((i) => ({ key: i.id, emoji: i.emoji ?? "🌱" }))
+      ? placedItems.map((i) => ({ key: i.id, emoji: i.emoji ?? "Sprout" }))
       : [
-          { key: "seed", emoji: "🌷" },
-          { key: "young", emoji: "🌳" },
-          { key: "butterfly", emoji: "🦋" },
-          { key: "bench", emoji: "🪑" },
-          { key: "herb", emoji: "🌿" },
+          { key: "seed", emoji: "Flower2" },
+          { key: "young", emoji: "Trees" },
+          { key: "butterfly", emoji: "Flower2" },
+          { key: "bench", emoji: "Armchair" },
+          { key: "herb", emoji: "Sprout" },
         ];
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        emoji="🌱"
+        emoji="Sprout"
         title="My Garden"
         subtitle="Every activity you finish helps something here grow."
       />
@@ -94,7 +95,7 @@ function GardenPage() {
         ) : null}
         <div className="grid place-items-center gap-3 py-8 text-center">
           <span className="animate-float text-8xl" aria-hidden>
-            {gardenStage.emoji}
+            <Icon symbol={gardenStage.emoji} size={64} className="text-mint" />
           </span>
           <h2 className="text-2xl font-bold">{gardenStage.name}</h2>
           <p className="text-sm text-muted-foreground">{gardenXp.toLocaleString()} Garden XP</p>
@@ -106,12 +107,11 @@ function GardenPage() {
                 max={gardenNext.threshold - gardenStage.threshold}
               />
               <p className="mt-2 text-xs text-muted-foreground">
-                {Math.max(0, gardenNext.threshold - gardenXp)} XP until {gardenNext.name}{" "}
-                {gardenNext.emoji}
+                {Math.max(0, gardenNext.threshold - gardenXp)} XP until {gardenNext.name}
               </p>
             </div>
           ) : (
-            <p className="text-sm font-semibold">Your Wellness Sanctuary is complete 🏡</p>
+            <p className="text-sm font-semibold">Your Wellness Sanctuary is complete!</p>
           )}
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -123,18 +123,18 @@ function GardenPage() {
                 i <= stageIdx ? "bg-surface" : "bg-surface/40 text-muted-foreground",
               )}
             >
-              {s.emoji} {s.name}
+              <Icon symbol={s.emoji} size={13} className="mr-1 inline-block align-[-2px]" /> {s.name}
             </span>
           ))}
         </div>
-        <div className="mt-8 flex flex-wrap items-end justify-center gap-6 text-4xl" aria-hidden>
+        <div className="mt-8 flex flex-wrap items-end justify-center gap-6" aria-hidden>
           {gardenEmojis.map((g, i) => (
             <span
               key={g.key}
-              className="animate-float"
+              className="animate-float grid h-10 w-10 place-items-center rounded-full bg-garden"
               style={{ animationDelay: `${(i % 4) * 0.3}s` }}
             >
-              {g.emoji}
+              <Icon symbol={g.emoji} size={22} />
             </span>
           ))}
         </div>
@@ -167,7 +167,9 @@ function GardenPage() {
                   key={r.id}
                   className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3"
                 >
-                  <span aria-hidden>{r.emoji}</span>
+                  <span aria-hidden>
+                  <Icon symbol={r.emoji} size={18} />
+                </span>
                   <span className="min-w-0 flex-1 truncate">{r.title}</span>
                   <span className="shrink-0 font-semibold">+{r.gardenXp} Garden XP</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
@@ -178,14 +180,15 @@ function GardenPage() {
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Every XP you earn grows your garden. Finish something today 🌱
+              Every XP you earn grows your garden. Finish something today and watch it grow.
             </p>
           )}
         </SoftCard>
       ) : (
         <>
           <p className="mt-4 text-sm text-muted-foreground">
-            🌿 {placedCount} item{placedCount === 1 ? "" : "s"} placed in your garden
+            <Icon symbol="Sprout" size={16} className="mr-1 inline-block align-[-2px] text-mint" />
+            {placedCount} item{placedCount === 1 ? "" : "s"} placed in your garden
           </p>
           {items.length ? (
             <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -193,7 +196,7 @@ function GardenPage() {
                 <li key={i.id}>
                   <div className={cn("card-soft p-4 text-center", !i.placed && "opacity-80")}>
                     <p className="text-3xl" aria-hidden>
-                      {i.emoji ?? "🌱"}
+                      <Icon symbol={i.emoji ?? "Sprout"} size={32} className="text-garden" />
                     </p>
                     <p className="mt-2 text-sm font-semibold">{i.name}</p>
                     <button
@@ -215,7 +218,7 @@ function GardenPage() {
           ) : (
             <div className="mt-4">
               <EmptyState
-                emoji="🌱"
+                emoji="Sprout"
                 title="No garden items yet"
                 message="Claim today's daily reward to add your first item."
               />

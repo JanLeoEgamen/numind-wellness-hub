@@ -4,6 +4,7 @@ import { BADGES, USER } from "@/lib/mock-data";
 import { useNuMind } from "@/lib/numind-store";
 import { useMyStats, useMyBadges, useMyMemories } from "@/lib/server-data";
 import { PageHeader, SoftCard, StatTile, SectionTitle, CTALink } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/profile")({
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/app/profile")({
   component: ProfilePage,
 });
 
-const AVATARS = ["🌷", "🌻", "🦊", "🐢", "🌊", "🍀", "🐦", "🌙"];
+const AVATARS = ["Flower2", "Sun", "Cat", "Turtle", "Waves", "Clover", "Bird", "Moon"];
 
 function ProfilePage() {
   const { xp, streak, longestStreak, levelName, levelEmoji, levelIndex, gardenStage } = useNuMind();
@@ -56,14 +57,14 @@ function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader emoji="👤" title="Profile" subtitle="Make it feel like yours." />
+      <PageHeader emoji="UserRound" title="Profile" subtitle="Make it feel like yours." />
 
       <SoftCard className="bg-hero flex flex-wrap items-center gap-5">
         <span
-          className="grid h-24 w-24 place-items-center rounded-full bg-surface text-5xl shadow-soft"
+          className="grid h-24 w-24 place-items-center rounded-full bg-surface shadow-soft"
           aria-hidden
         >
-          {avatar}
+          <Icon symbol={avatar} size={48} />
         </span>
         <div className="min-w-[200px] flex-1">
           <label htmlFor="nick" className="text-xs text-muted-foreground">
@@ -76,7 +77,8 @@ function ProfilePage() {
             className="focus-ring mt-1 w-full rounded-2xl border border-border bg-background px-4 py-2.5 text-sm"
           />
           <p className="mt-3 text-sm font-semibold">
-            {levelEmoji} Level {levelIndex + 1} — {levelName} · Joined {USER.joined}
+            <Icon symbol={levelEmoji} size={15} className="mr-1 inline-block align-[-2px]" />
+            Level {levelIndex + 1} — {levelName} · Joined {USER.joined}
           </p>
         </div>
       </SoftCard>
@@ -90,21 +92,23 @@ function ProfilePage() {
               onClick={() => setAvatar(a)}
               aria-pressed={avatar === a}
               className={cn(
-                "focus-ring grid h-14 w-14 place-items-center rounded-2xl text-2xl",
+                "focus-ring grid h-14 w-14 place-items-center rounded-2xl",
                 avatar === a ? "bg-brand" : "bg-muted hover:bg-accent",
               )}
             >
-              <span aria-hidden>{a}</span>
+              <span aria-hidden>
+                <Icon symbol={a} size={24} className={avatar === a ? "text-navy" : undefined} />
+              </span>
             </button>
           ))}
         </div>
       </SoftCard>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile emoji="⭐" label="Total XP" value={xp.toLocaleString()} tone="sun" />
-        <StatTile emoji="🔥" label="Current streak" value={`${streak} days`} tone="coral" />
-        <StatTile emoji="🏅" label="Longest streak" value={`${longestStreak} days`} tone="coral" />
-        <StatTile emoji="🌳" label="Garden" value={gardenStage.name} tone="mint" />
+        <StatTile emoji="Star" label="Total XP" value={xp.toLocaleString()} tone="sun" />
+        <StatTile emoji="Flame" label="Current streak" value={`${streak} days`} tone="coral" />
+        <StatTile emoji="Medal" label="Longest streak" value={`${longestStreak} days`} tone="coral" />
+        <StatTile emoji="Trees" label="Garden" value={gardenStage.name} tone="mint" />
       </div>
 
       <section className="mt-6">
@@ -114,7 +118,7 @@ function ProfilePage() {
             .filter((b) => b.earned)
             .map((b) => (
               <li key={b.slug} className="rounded-full bg-muted px-4 py-2 text-sm font-semibold">
-                {b.emoji} {b.name}
+                <Icon symbol={b.emoji} size={14} className="mr-1 inline-block align-[-2px]" /> {b.name}
               </li>
             ))}
         </ul>
@@ -126,7 +130,8 @@ function ProfilePage() {
           <ul className="grid gap-2">
             {favMemories.map((m) => (
               <li key={m.id} className="card-soft p-4 text-sm">
-                {m.emoji ?? "🌸"} {m.title}
+                <Icon symbol={m.emoji ?? "Flower2"} size={16} className="mr-1 inline-block align-[-2px]" />
+                {m.title}
               </li>
             ))}
           </ul>

@@ -6,6 +6,7 @@ import { useNuMind } from "@/lib/numind-store";
 import { recordGamePlay } from "@/lib/server-functions";
 import { useMyGames } from "@/lib/server-data";
 import { PageHeader, SoftCard, XPBadge, LockedPill, LoadingState, EmptyState } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/play")({
@@ -26,7 +27,17 @@ const TRIVIA = {
   correct: 0,
 };
 
-const BINGO = ["💧 8 glasses", "🚶 Walk", "😴 7h sleep", "🧘 Mindful min", "😊 Gratitude", "🌞 Outside", "📖 Read", "❤️ Kind act", "⚡ Focus"];
+const BINGO = [
+  { icon: "Droplets", label: "8 glasses" },
+  { icon: "Footprints", label: "Walk" },
+  { icon: "Moon", label: "7h sleep" },
+  { icon: "PersonStanding", label: "Mindful min" },
+  { icon: "Smile", label: "Gratitude" },
+  { icon: "Sun", label: "Outside" },
+  { icon: "BookOpen", label: "Read" },
+  { icon: "Heart", label: "Kind act" },
+  { icon: "Zap", label: "Focus" },
+];
 
 const SENSES = ["5 things you can see", "4 things you can feel", "3 things you can hear", "2 things you can smell", "1 thing you can taste"];
 
@@ -51,11 +62,11 @@ function PlayPage() {
       if (res.awarded) {
         awardXp(xp, "Play complete");
         celebrate({
-          emoji: "🎮",
+          emoji: "Gamepad2",
           title: "Nice play!",
           message: "That counts toward today's journey.",
           xp,
-          chain: [`+${xp} XP earned`, "Quest progress updated", "Garden growth updated", "Numi is celebrating 🤖"],
+          chain: [`+${xp} XP earned`, "Quest progress updated", "Garden growth updated", "Numi is celebrating!"],
         });
       } else if (res.playedToday) {
         toast.info("Already played today — nice revisit!");
@@ -86,9 +97,9 @@ function PlayPage() {
   if (isError && !data) {
     return (
       <div className="mx-auto max-w-5xl">
-        <PageHeader emoji="🎮" title="Healthy Play" subtitle="Play a little. It still counts as showing up." />
+        <PageHeader emoji="Gamepad2" title="Healthy Play" subtitle="Play a little. It still counts as showing up." />
         <EmptyState
-          emoji="🌥"
+          emoji="CloudFog"
           title="That didn't load"
           message="No worries — let's try that again."
           action={
@@ -104,7 +115,7 @@ function PlayPage() {
   if (isLoading || !data) {
     return (
       <div className="mx-auto max-w-5xl">
-        <PageHeader emoji="🎮" title="Healthy Play" subtitle="Play a little. It still counts as showing up." />
+        <PageHeader emoji="Gamepad2" title="Healthy Play" subtitle="Play a little. It still counts as showing up." />
         <LoadingState rows={6} />
       </div>
     );
@@ -112,7 +123,7 @@ function PlayPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader emoji="🎮" title="Healthy Play" subtitle="Play a little. It still counts as showing up." />
+      <PageHeader emoji="Gamepad2" title="Healthy Play" subtitle="Play a little. It still counts as showing up." />
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.games.map((g) => {
@@ -121,11 +132,13 @@ function PlayPage() {
             <li key={g.id}>
               <SoftCard interactive className="flex h-full flex-col">
                 <div className="flex items-start justify-between">
-                  <span className="text-3xl" aria-hidden>{g.emoji ?? "🎮"}</span>
+                  <span className="text-3xl" aria-hidden>
+                    <Icon symbol={g.emoji ?? "Gamepad2"} size={32} />
+                  </span>
                   {locked ? (
                     <LockedPill label="Premium" />
                   ) : g.playedToday ? (
-                    <span className="rounded-full bg-mint/40 px-2.5 py-1 text-[11px] font-semibold">Played ✓</span>
+                    <span className="rounded-full bg-mint/40 px-2.5 py-1 text-[11px] font-semibold">Played</span>
                   ) : (
                     <XPBadge xp={g.xpReward} />
                   )}
@@ -159,7 +172,9 @@ function PlayPage() {
         >
           <div className="card-soft animate-pop w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2">
-              <span className="text-3xl" aria-hidden>{openGame.emoji ?? "🎮"}</span>
+              <span className="text-3xl" aria-hidden>
+                <Icon symbol={openGame.emoji ?? "Gamepad2"} size={32} />
+              </span>
               <h2 className="text-lg font-bold">{openGame.name}</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{openGame.description}</p>
@@ -191,7 +206,9 @@ function PlayPage() {
               </div>
             ) : open === "bubble" ? (
               <div className="grid place-items-center py-6 text-center">
-                <div className="animate-breathe my-8 grid h-40 w-40 place-items-center rounded-full bg-brand text-3xl">🫧</div>
+                <div className="animate-breathe my-8 grid h-40 w-40 place-items-center rounded-full bg-brand">
+                  <Icon symbol="Sparkles" size={40} className="text-navy" />
+                </div>
                 <p className="text-sm text-muted-foreground">In as it grows, out as it shrinks.</p>
               </div>
             ) : open === "bingo" ? (
@@ -199,30 +216,33 @@ function PlayPage() {
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   {BINGO.map((b, i) => (
                     <button
-                      key={b}
+                      key={b.label}
                       onClick={() => setBingo((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]))}
                       aria-pressed={bingo.includes(i)}
-                      className={cn("focus-ring rounded-2xl px-2 py-5 text-xs font-semibold", bingo.includes(i) ? "bg-mint/50" : "bg-muted/60")}
+                      className={cn("focus-ring flex items-center justify-center gap-1 rounded-2xl px-2 py-5 text-xs font-semibold", bingo.includes(i) ? "bg-mint/50" : "bg-muted/60")}
                     >
-                      {b}
+                      <Icon symbol={b.icon} size={14} className="shrink-0" />
+                      {b.label}
                     </button>
                   ))}
                 </div>
               </div>
             ) : open === "wheel" ? (
               <div className="grid place-items-center py-4 text-center">
-                <div className={cn("my-6 grid h-40 w-40 place-items-center rounded-full bg-brand text-4xl transition-transform duration-1000", spin && "rotate-[720deg]")}>🎡</div>
+                <div className={cn("my-6 grid h-40 w-40 place-items-center rounded-full bg-brand transition-transform duration-1000", spin && "rotate-[720deg]")}>
+                  <Icon symbol="FerrisWheel" size={40} className="text-navy" />
+                </div>
                 <p className="text-sm">{spin ?? "Give it a spin for today's micro-challenge."}</p>
-                <button onClick={() => setSpin("Drink a glass of water and step outside for 5 minutes 💧🌞")} className="focus-ring mt-4 rounded-full bg-muted px-5 py-2.5 text-sm font-semibold">
+                <button onClick={() => setSpin("Drink a glass of water and step outside for 5 minutes")} className="focus-ring mt-4 rounded-full bg-muted px-5 py-2.5 text-sm font-semibold">
                   Spin
                 </button>
               </div>
             ) : open === "match" ? (
               <div>
                 <div className="mt-4 grid grid-cols-4 gap-2">
-                  {["🌱", "🌱", "🦋", "🦋", "🌞", "🌞", "💧", "💧"].map((e, i) => (
-                    <button key={i} className="focus-ring grid h-16 place-items-center rounded-2xl bg-muted/60 text-2xl hover:bg-accent">
-                      {e}
+                  {[["Sprout"], ["Sprout"], ["Flower2"], ["Flower2"], ["Sun"], ["Sun"], ["Droplets"], ["Droplets"]].map(([e], i) => (
+                    <button key={i} className="focus-ring grid h-16 place-items-center rounded-2xl bg-muted/60 hover:bg-accent">
+                      <Icon symbol={e} size={22} />
                     </button>
                   ))}
                 </div>

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Confetti, NumiAvatar, ProgressBar, DisclaimerNote } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 import { completeOnboarding } from "@/lib/server-functions";
 import { getAuthenticatedUser, getOnboardingCompleted } from "@/lib/auth-guard";
@@ -29,9 +30,21 @@ export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
 });
 
-const FOCUS_AREAS = ["🧠 Focus","🌿 Everyday Stress","😴 Better Sleep","💪 Healthy Habits","😊 Positive Mindset","🧘 Mindfulness","🎯 Goals","📖 Personal Growth","💧 Hydration","🏃 Movement","⚡ Productivity"];
+const FOCUS_AREAS = [
+  { icon: "Brain", label: "Focus" },
+  { icon: "Sprout", label: "Everyday Stress" },
+  { icon: "Moon", label: "Better Sleep" },
+  { icon: "Dumbbell", label: "Healthy Habits" },
+  { icon: "Smile", label: "Positive Mindset" },
+  { icon: "PersonStanding", label: "Mindfulness" },
+  { icon: "Target", label: "Goals" },
+  { icon: "BookOpen", label: "Personal Growth" },
+  { icon: "Droplets", label: "Hydration" },
+  { icon: "Footprints", label: "Movement" },
+  { icon: "Zap", label: "Productivity" },
+];
 const GOALS = ["Feel calmer most days","Sleep through the night","Move every day","Write more often","Drink more water","Finish what I start"];
-const AVATARS = ["🌷","🌻","🦊","🐢","🌊","🍀","🐦","🌙"];
+const AVATARS = ["Flower2","Sun","Cat","Turtle","Waves","Clover","Bird","Moon"];
 const TIMES = ["Morning","Afternoon","Evening","Custom"];
 
 function Onboarding() {
@@ -41,7 +54,7 @@ function Onboarding() {
   const [saving, setSaving] = useState(false);
   const [areas, setAreas] = useState<string[]>([]);
   const [goals, setGoals] = useState<string[]>([]);
-  const [avatar, setAvatar] = useState("🌷");
+  const [avatar, setAvatar] = useState("Flower2");
   const [time, setTime] = useState("Morning");
   const total = 7;
 
@@ -73,7 +86,9 @@ function Onboarding() {
         <div className="mt-6 min-h-[320px]">
           {step === 0 && (
             <div className="grid place-items-center text-center">
-              <span className="animate-float text-6xl" aria-hidden>🌱</span>
+              <span className="animate-float text-6xl" aria-hidden>
+                <Icon symbol="Sprout" size={56} className="text-mint" />
+              </span>
               <h1 className="mt-4 text-3xl font-extrabold">Welcome to NuMind</h1>
               <p className="mt-2 text-muted-foreground">Small steps can create meaningful change.</p>
             </div>
@@ -83,8 +98,9 @@ function Onboarding() {
               <h1 className="text-2xl font-bold">What would you like to work on?</h1>
               <div className="mt-4 flex flex-wrap gap-2">
                 {FOCUS_AREAS.map((a) => (
-                  <button key={a} onClick={() => toggle(areas, setAreas, a)} aria-pressed={areas.includes(a)} className={cn("focus-ring rounded-full border px-4 py-2 text-sm", areas.includes(a) ? "border-teal bg-teal/15 font-semibold" : "border-border bg-muted/40")}>
-                    {a}
+                  <button key={a.label} onClick={() => toggle(areas, setAreas, a.label)} aria-pressed={areas.includes(a.label)} className={cn("focus-ring flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm", areas.includes(a.label) ? "border-teal bg-teal/15 font-semibold" : "border-border bg-muted/40")}>
+                    <Icon symbol={a.icon} size={14} />
+                    {a.label}
                   </button>
                 ))}
               </div>
@@ -98,7 +114,10 @@ function Onboarding() {
                 {GOALS.map((g) => (
                   <li key={g}>
                     <button onClick={() => toggle(goals, setGoals, g, 3)} aria-pressed={goals.includes(g)} className={cn("focus-ring w-full rounded-2xl border px-4 py-3 text-left text-sm transition", goals.includes(g) ? "border-teal bg-teal/15 font-semibold shadow-soft" : "border-border bg-muted/40")}>
-                      {goals.includes(g) ? "✓ " : ""}{g}
+                      {goals.includes(g) ? (
+                        <Icon symbol="Check" size={14} strokeWidth={2.5} className="mr-1 inline-block align-[-2px] text-teal" />
+                      ) : null}
+                      {g}
                     </button>
                   </li>
                 ))}
@@ -110,8 +129,10 @@ function Onboarding() {
               <h1 className="text-2xl font-bold">Choose your avatar</h1>
               <div className="mt-4 flex flex-wrap gap-3">
                 {AVATARS.map((a) => (
-                  <button key={a} onClick={() => setAvatar(a)} aria-pressed={avatar === a} className={cn("focus-ring grid h-16 w-16 place-items-center rounded-3xl text-3xl", avatar === a ? "bg-brand" : "bg-muted")}>
-                    <span aria-hidden>{a}</span>
+                  <button key={a} onClick={() => setAvatar(a)} aria-pressed={avatar === a} className={cn("focus-ring grid h-16 w-16 place-items-center rounded-3xl", avatar === a ? "bg-brand" : "bg-muted")}>
+                    <span aria-hidden>
+                      <Icon symbol={a} size={28} className={avatar === a ? "text-navy" : undefined} />
+                    </span>
                   </button>
                 ))}
               </div>
@@ -143,11 +164,15 @@ function Onboarding() {
           {step === 6 && (
             <div className="grid place-items-center text-center">
               <Confetti count={40} />
-              <span className="animate-float text-6xl" aria-hidden>🌱</span>
+              <span className="animate-float text-6xl" aria-hidden>
+                <Icon symbol="Sprout" size={56} className="text-mint" />
+              </span>
               <h1 className="mt-4 text-2xl font-bold">Your first seed is planted!</h1>
               <p className="mt-2 text-sm text-muted-foreground">Welcome to your Wellness Garden, {avatar}</p>
               <p className="mt-4 rounded-full bg-sun/25 px-5 py-2 text-sm font-bold">+100 XP</p>
-              <p className="mt-2 rounded-full bg-mint/40 px-5 py-2 text-sm font-semibold">🎖 Badge unlocked — First Step</p>
+              <p className="mt-2 rounded-full bg-mint/40 px-5 py-2 text-sm font-semibold">
+                <Icon symbol="Award" size={14} className="mr-1 inline-block align-[-2px]" /> Badge unlocked — First Step
+              </p>
             </div>
           )}
         </div>

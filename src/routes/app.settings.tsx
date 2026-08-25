@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useNuMind } from "@/lib/numind-store";
 import { PageHeader, SoftCard, SectionTitle, DisclaimerNote } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 import type { UserSettings } from "@/lib/server-functions";
 import { changeMyPassword, deleteMyAccount, exportMyData } from "@/lib/server-functions";
@@ -146,7 +147,7 @@ function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader emoji="⚙️" title="Settings" subtitle="Everything tuned the way you like it." />
+      <PageHeader emoji="Settings" title="Settings" subtitle="Everything tuned the way you like it." />
 
       <div className="grid gap-4">
         <SoftCard>
@@ -177,7 +178,19 @@ function SettingsPage() {
           <div className="flex gap-2">
             {(["light", "dark", "system"] as const).map((t) => (
               <button key={t} onClick={() => patch({ theme: t })} aria-pressed={settings.theme === t} className={cn("focus-ring rounded-full px-4 py-2 text-sm font-medium capitalize", settings.theme === t ? "bg-brand font-bold text-navy" : "bg-muted")}>
-                {t === "light" ? "☀️ Light" : t === "dark" ? "🌙 Dark" : "🖥 System"}
+                {t === "light" ? (
+                  <>
+                    <Icon symbol="Sun" size={14} className="mr-1 inline-block align-[-2px]" /> Light
+                  </>
+                ) : t === "dark" ? (
+                  <>
+                    <Icon symbol="Moon" size={14} className="mr-1 inline-block align-[-2px]" /> Dark
+                  </>
+                ) : (
+                  <>
+                    <Icon symbol="Monitor" size={14} className="mr-1 inline-block align-[-2px]" /> System
+                  </>
+                )}
               </button>
             ))}
           </div>
@@ -259,7 +272,9 @@ function SettingsPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="max-w-sm rounded-3xl text-center">
           <AlertDialogHeader className="items-center text-center">
-            <span className="text-4xl" aria-hidden>🗑️</span>
+            <span className="text-4xl" aria-hidden>
+              <Icon symbol="Trash2" size={40} />
+            </span>
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes your account, journal, XP, garden and all personal data. This cannot be undone.
@@ -285,7 +300,9 @@ function SettingsPage() {
       <AlertDialog open={deleteDataOpen} onOpenChange={setDeleteDataOpen}>
         <AlertDialogContent className="max-w-sm rounded-3xl text-center">
           <AlertDialogHeader className="items-center text-center">
-            <span className="text-4xl" aria-hidden>🫧</span>
+            <span className="text-4xl" aria-hidden>
+              <Icon symbol="Sparkles" size={40} />
+            </span>
             <AlertDialogTitle>Delete all of your data?</AlertDialogTitle>
             <AlertDialogDescription>
               This erases your account and everything in it — journal, habits, XP, garden, memories and Numi conversations. This cannot be undone.

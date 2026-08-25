@@ -16,6 +16,7 @@ import {
   StreakBadge,
   CTALink,
 } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
@@ -79,7 +80,8 @@ function Home() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">
-              <span aria-hidden>🌞</span> {greeting}, {firstName}!
+              <Icon symbol="Sun" size={28} className="mr-1 inline-block -translate-y-0.5" />
+              {greeting}, {firstName}!
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Small steps count. You have {totalTasks - done} things waiting whenever you're ready.
@@ -87,10 +89,10 @@ function Home() {
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <StreakBadge days={streak} />
               <span className="inline-flex items-center gap-1 rounded-full bg-sun/25 px-3 py-1.5 text-xs font-semibold">
-                <span aria-hidden>⭐</span> {xp.toLocaleString()} XP
+                <Icon symbol="Star" size={13} fill className="text-sun" /> {xp.toLocaleString()} XP
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground">
-                <span aria-hidden>{levelEmoji}</span> Level {levelIndex + 1} — {levelName}
+                <Icon symbol={levelEmoji} size={14} /> Level {levelIndex + 1} — {levelName}
               </span>
             </div>
           </div>
@@ -136,7 +138,7 @@ function Home() {
                         {t.title}
                         {taskDone ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-mint/40 px-2 py-0.5 text-[11px] font-semibold">
-                            ✓ Complete
+                            <Icon symbol="Check" size={11} strokeWidth={3} /> Complete
                           </span>
                         ) : (
                           <XPBadge xp={t.xp} />
@@ -166,7 +168,7 @@ function Home() {
               <SectionTitle hint={`${gardenXp} Garden XP`}>My Garden</SectionTitle>
               <div className="flex items-center gap-4">
                 <span className="animate-float text-5xl" aria-hidden>
-                  {gardenStage.emoji}
+                  <Icon symbol={gardenStage.emoji} size={44} className="text-mint" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{gardenStage.name}</p>
@@ -184,7 +186,7 @@ function Home() {
                         max={gardenNext.threshold - gardenStage.threshold}
                       />
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {gardenNext.threshold - gardenXp} XP to {gardenNext.name} {gardenNext.emoji}
+                        {gardenNext.threshold - gardenXp} XP to {gardenNext.name}
                       </p>
                     </>
                   ) : null}
@@ -199,7 +201,7 @@ function Home() {
               <SectionTitle>Daily Reward</SectionTitle>
               <div className="flex items-center gap-4">
                 <span className={claimedReward ? "text-5xl" : "animate-float text-5xl"} aria-hidden>
-                  {claimedReward ? "🦋" : "🎁"}
+                  <Icon symbol={claimedReward ? "Flower2" : "Gift"} size={40} className="text-mint" />
                 </span>
                 <div>
                   <p className="font-semibold">
@@ -215,7 +217,7 @@ function Home() {
                 onClick={claimDailyReward}
                 className="focus-ring mt-4 w-full rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-navy disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
               >
-                {claimedReward ? "Claimed today ✓" : "Claim +50 XP"}
+                {claimedReward ? "Claimed today" : "Claim +50 XP"}
               </button>
             </SoftCard>
           </div>
@@ -249,7 +251,10 @@ function Home() {
           </SoftCard>
 
           <SoftCard>
-            <SectionTitle>🌸 Memory Lane</SectionTitle>
+            <SectionTitle>
+              <Icon symbol="Flower2" size={18} className="mr-1 inline-block align-[-2px] text-muted-foreground" />
+              Memory Lane
+            </SectionTitle>
             <p className="text-sm font-semibold">Look how far you've come!</p>
             {srvMemories && srvMemories.length ? (
               <p className="mt-1 text-sm text-muted-foreground">{srvMemories[0]?.title}</p>
@@ -267,17 +272,17 @@ function Home() {
             <SectionTitle>Quick jump</SectionTitle>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { to: "/app/focus", emoji: "⚡", label: "Focus" },
-                { to: "/app/journal", emoji: "📖", label: "Journal" },
-                { to: "/app/play", emoji: "🎮", label: "Play" },
-                { to: "/app/rewards", emoji: "🎁", label: "Rewards" },
+                { to: "/app/focus", icon: "Zap", label: "Focus" },
+                { to: "/app/journal", icon: "BookOpen", label: "Journal" },
+                { to: "/app/play", icon: "Gamepad2", label: "Play" },
+                { to: "/app/rewards", icon: "Gift", label: "Rewards" },
               ].map((q) => (
                 <Link
                   key={q.to}
                   to={q.to}
                   className="focus-ring flex items-center gap-2 rounded-2xl bg-muted/60 px-3 py-3 text-sm font-medium hover:bg-accent"
                 >
-                  <span aria-hidden>{q.emoji}</span>
+                  <Icon symbol={q.icon} size={18} />
                   {q.label}
                 </Link>
               ))}

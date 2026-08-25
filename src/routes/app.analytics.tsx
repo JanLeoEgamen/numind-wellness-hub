@@ -79,18 +79,18 @@ function sliceSeries<T extends { date: string }>(series: T[], period: Period): T
 function SummaryTiles({ s }: { s: MyAnalytics["summary"] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <StatTile emoji="⭐" label="Total XP" value={s.totalXp.toLocaleString()} tone="sun" />
-      <StatTile emoji="🔥" label="Current streak" value={`${s.currentStreak} days`} tone="coral" />
-      <StatTile emoji="📅" label="Days active" value={s.activeDays} tone="lavender" />
-      <StatTile emoji="🌞" label="Daily Resets" value={s.resetsCompleted} tone="teal" />
-      <StatTile emoji="⚡" label="Focus sessions" value={s.focusSessions} tone="lavender" />
-      <StatTile emoji="⏱" label="Focus minutes" value={s.focusMinutes.toLocaleString()} tone="cyan" />
-      <StatTile emoji="📖" label="Journal entries" value={s.journalEntries} tone="mint" />
-      <StatTile emoji="🏆" label="Quests completed" value={s.questsCompleted} tone="sun" />
-      <StatTile emoji="🎖" label="Badges earned" value={s.badgesEarned} tone="coral" />
-      <StatTile emoji="🌱" label="Habits logged" value={s.habitsLogged} tone="mint" />
-      <StatTile emoji="🎮" label="Games played" value={s.gamePlays} tone="cyan" />
-      <StatTile emoji="🏅" label="Longest streak" value={`${s.longestStreak} days`} tone="coral" />
+      <StatTile emoji="Star" label="Total XP" value={s.totalXp.toLocaleString()} tone="sun" />
+      <StatTile emoji="Flame" label="Current streak" value={`${s.currentStreak} days`} tone="coral" />
+      <StatTile emoji="Calendar" label="Days active" value={s.activeDays} tone="lavender" />
+      <StatTile emoji="Sun" label="Daily Resets" value={s.resetsCompleted} tone="teal" />
+      <StatTile emoji="Zap" label="Focus sessions" value={s.focusSessions} tone="lavender" />
+      <StatTile emoji="Timer" label="Focus minutes" value={s.focusMinutes.toLocaleString()} tone="cyan" />
+      <StatTile emoji="BookOpen" label="Journal entries" value={s.journalEntries} tone="mint" />
+      <StatTile emoji="Trophy" label="Quests completed" value={s.questsCompleted} tone="sun" />
+      <StatTile emoji="Award" label="Badges earned" value={s.badgesEarned} tone="coral" />
+      <StatTile emoji="Sprout" label="Habits logged" value={s.habitsLogged} tone="mint" />
+      <StatTile emoji="Gamepad2" label="Games played" value={s.gamePlays} tone="cyan" />
+      <StatTile emoji="Medal" label="Longest streak" value={`${s.longestStreak} days`} tone="coral" />
     </div>
   );
 }
@@ -245,7 +245,7 @@ function AnalyticsPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-6xl">
-        <PageHeader emoji="📊" title="My Analytics" subtitle="Loading your numbers…" />
+        <PageHeader emoji="ChartColumn" title="My Analytics" subtitle="Loading your numbers…" />
         <LoadingState rows={5} />
       </div>
     );
@@ -254,7 +254,7 @@ function AnalyticsPage() {
   if (isError || !data) {
     return (
       <div className="mx-auto max-w-6xl">
-        <PageHeader emoji="📊" title="My Analytics" />
+        <PageHeader emoji="ChartColumn" title="My Analytics" />
         <ErrorState onRetry={() => void refetch()} />
       </div>
     );
@@ -265,9 +265,9 @@ function AnalyticsPage() {
   if (!hasData) {
     return (
       <div className="mx-auto max-w-6xl">
-        <PageHeader emoji="📊" title="My Analytics" subtitle="Your wellness in numbers." />
+        <PageHeader emoji="ChartColumn" title="My Analytics" subtitle="Your wellness in numbers." />
         <EmptyState
-          emoji="📊"
+          emoji="ChartColumn"
           title="Nothing to chart yet"
           message="Once you complete a Daily Reset, journal, focus, or earn some XP, your analytics will start painting a picture here."
         />
@@ -280,7 +280,7 @@ function AnalyticsPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
-        emoji="📊"
+        emoji="ChartColumn"
         title="My Analytics"
         subtitle="Your wellness in numbers — XP, focus, mood and habits over time."
         action={

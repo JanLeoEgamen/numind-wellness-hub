@@ -12,6 +12,7 @@ import {
   XPBadge,
   DisclaimerNote,
 } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/wellness")({
@@ -142,7 +143,7 @@ function WellnessPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        emoji="💧"
+        emoji="Droplets"
         title="My Wellness"
         subtitle="Your everyday habits, your own goals. No pressure, just patterns."
         action={
@@ -158,7 +159,15 @@ function WellnessPage() {
                 showFavs ? "bg-coral/25" : "bg-muted hover:bg-accent",
               )}
             >
-              {showFavs ? "⭐ Favourites on" : "☆ Favourites"}
+              {showFavs ? (
+                  <>
+                    <Icon symbol="Star" size={13} fill className="mr-1 inline-block align-[-2px] text-sun" /> Favourites on
+                  </>
+                ) : (
+                  <>
+                    <Icon symbol="Star" size={13} className="mr-1 inline-block align-[-2px]" /> Favourites
+                  </>
+                )}
             </button>
           </div>
         }
@@ -184,11 +193,11 @@ function WellnessPage() {
                         h.favorite ? "bg-coral/25" : "bg-muted hover:bg-accent",
                       )}
                     >
-                      {h.favorite ? "⭐" : "☆"}
+                      <Icon symbol="Star" size={16} fill={h.favorite} className={h.favorite ? "text-sun" : "text-muted-foreground"} />
                     </button>
                     {done ? (
                       <span className="rounded-full bg-mint/40 px-2.5 py-1 text-[11px] font-semibold">
-                        Goal met ✓
+                        Goal met
                       </span>
                     ) : (
                       <XPBadge xp={20} />

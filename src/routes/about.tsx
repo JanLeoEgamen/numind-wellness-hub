@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteChrome";
 import { SoftCard } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -15,6 +16,11 @@ export const Route = createFileRoute("/about")({
 });
 
 function AboutPage() {
+  const values = [
+    { icon: "Sprout", title: "Small steps", desc: "One minute is a real thing." },
+    { icon: "Heart", title: "No guilt", desc: "Missed days are just days." },
+    { icon: "PartyPopper", title: "Celebrate", desc: "Progress deserves confetti." },
+  ];
   return (
     <SiteLayout>
       <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
@@ -24,11 +30,13 @@ function AboutPage() {
           disappear after a week. NuMind is warm, playful and quietly consistent.
         </p>
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          {[["🌱","Small steps","One minute is a real thing."],["💛","No guilt","Missed days are just days."],["🎉","Celebrate","Progress deserves confetti."]].map(([e, t, d]) => (
-            <SoftCard key={t}>
-              <p className="text-3xl" aria-hidden>{e}</p>
-              <p className="mt-2 font-bold">{t}</p>
-              <p className="text-sm text-muted-foreground">{d}</p>
+          {values.map((v) => (
+            <SoftCard key={v.title}>
+              <p className="text-3xl" aria-hidden>
+                <Icon symbol={v.icon} size={32} />
+              </p>
+              <p className="mt-2 font-bold">{v.title}</p>
+              <p className="text-sm text-muted-foreground">{v.desc}</p>
             </SoftCard>
           ))}
         </div>

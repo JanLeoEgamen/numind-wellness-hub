@@ -8,6 +8,7 @@ import {
   getMyHabits,
   getMyJournal,
   getMyNotifications,
+  markNotificationsRead,
   getMyGarden,
   getCommunityFeed,
   getCommunityStats,
@@ -53,6 +54,16 @@ export function useMyJournal() {
 
 export function useMyNotifications() {
   return useQuery({ queryKey: ["myNotifications"], queryFn: () => getMyNotifications() });
+}
+
+// Mark one or more notifications read, then invalidate the shared cache so the
+// header badge and the inbox both settle on the server's canonical state.
+export function useMarkNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids?: string[]) => markNotificationsRead({ data: ids?.length ? { ids } : {} }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["myNotifications"] }),
+  });
 }
 
 export function useMyGarden() {

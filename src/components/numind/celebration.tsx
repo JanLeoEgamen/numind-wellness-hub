@@ -1,5 +1,6 @@
 import { Confetti } from "./ui-kit";
 import { useNuMind } from "@/lib/numind-store";
+import { Icon } from "./icon";
 
 export function CelebrationModal() {
   const { celebration, dismissCelebration } = useNuMind();
@@ -18,8 +19,8 @@ export function CelebrationModal() {
           className="card-soft animate-pop w-full max-w-sm p-7 text-center"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-garden text-4xl" aria-hidden>
-            {celebration.emoji}
+          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-garden" aria-hidden>
+            <Icon symbol={celebration.emoji} size={40} className="text-mint" />
           </div>
           <h2 className="mt-4 text-xl font-bold">{celebration.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{celebration.message}</p>
@@ -32,9 +33,7 @@ export function CelebrationModal() {
             <ul className="mt-5 grid gap-1.5 text-left text-xs text-muted-foreground">
               {celebration.chain.map((c) => (
                 <li key={c} className="flex items-center gap-2">
-                  <span className="text-teal" aria-hidden>
-                    ✓
-                  </span>
+                  <Icon symbol="Check" size={14} strokeWidth={3} className="shrink-0 text-teal" />
                   {c}
                 </li>
               ))}

@@ -239,9 +239,9 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
         };
       });
       if (already) return;
-      toast.success(`+${xp} XP`, { description: `${title} complete 🎉` });
+      toast.success(`+${xp} XP`, { description: `${title} complete!` });
       celebrate({
-        emoji: "🎉",
+        emoji: "PartyPopper",
         title: `${title} complete!`,
         message: "You showed up for yourself today.",
         xp,
@@ -251,7 +251,7 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
           "Quest progress updated",
           "Garden growth updated",
           "Badge progress updated",
-          "Numi is celebrating 🤖",
+          "Numi is celebrating!",
         ],
       });
     },
@@ -262,9 +262,9 @@ export function NuMindProvider({ children }: { children: ReactNode }) {
     setState((s) => (s.claimedReward ? s : { ...s, claimedReward: true, xp: s.xp + 50 }));
     // Persist the reward server-side (idempotent, once per day).
     serverClaimDailyReward().catch(() => {});
-    toast.success("+50 XP", { description: "Daily reward claimed 🎁" });
+    toast.success("+50 XP", { description: "Daily reward claimed!" });
     celebrate({
-      emoji: "🎁",
+      emoji: "Gift",
       title: "Daily reward claimed!",
       message: "A Butterfly Flock landed in your garden.",
       xp: 50,

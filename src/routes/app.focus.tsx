@@ -14,6 +14,7 @@ import { breakdownTask } from "@/lib/task-breakdown";
 import { focusSoundPlayer, SOUND_LABELS } from "@/lib/focus-sounds";
 import type { FocusSound } from "@/lib/focus-sounds";
 import { PageHeader, SoftCard, ProgressRing, SectionTitle, EmptyState } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/focus")({
@@ -167,10 +168,10 @@ function FocusPage() {
       if (workBlock >= cycles) {
         // Full Pomodoro cycle complete.
         void claimFocusCycleBonus().then((res) => {
-          if (res && res.xpAwarded > 0) awardXp(res.xpAwarded, "Focus cycle complete 🍅");
+          if (res && res.xpAwarded > 0) awardXp(res.xpAwarded, "Focus cycle complete!");
         });
         celebrate({
-          emoji: "🍅",
+          emoji: "Circle",
           title: "Focus cycle complete!",
           message: "All sprints done — that's a full round of deep work.",
           xp: 10,
@@ -304,18 +305,18 @@ function FocusPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader emoji="⚡" title="Focus Zone" subtitle="One thing at a time. That's the whole trick." />
+      <PageHeader emoji="Zap" title="Focus Zone" subtitle="One thing at a time. That's the whole trick." />
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard emoji="⏱" label="Focus today" value={`${todayMinutes} min`} />
-        <StatCard emoji="📅" label="This week" value={`${weekMinutes} min`} />
+        <StatCard emoji="Timer" label="Focus today" value={`${todayMinutes} min`} />
+        <StatCard emoji="Calendar" label="This week" value={`${weekMinutes} min`} />
         <StatCard
-          emoji="🔥"
+          emoji="Flame"
           label="Focus streak"
           value={focusStreak > 0 ? `${focusStreak} day${focusStreak === 1 ? "" : "s"}` : "Start today"}
         />
-        <StatCard emoji="🎯" label="Sessions today" value={String(sessionsToday)} />
+        <StatCard emoji="Target" label="Sessions today" value={String(sessionsToday)} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -334,7 +335,15 @@ function FocusPage() {
                   mode === m ? "bg-brand text-navy" : "text-muted-foreground hover:bg-accent",
                 )}
               >
-                {m === "sprint" ? "⚡ Sprint" : "🍅 Pomodoro"}
+                {m === "sprint" ? (
+                  <>
+                    <Icon symbol="Zap" size={13} className="mr-1 inline-block align-[-1px]" /> Sprint
+                  </>
+                ) : (
+                  <>
+                    <Icon symbol="Circle" size={13} className="mr-1 inline-block align-[-1px]" /> Pomodoro
+                  </>
+                )}
               </button>
             ))}
           </div>
@@ -377,7 +386,7 @@ function FocusPage() {
                 <p className="text-xs text-muted-foreground">
                   {running
                     ? mode === "pomodoro" && phase === "break"
-                      ? "Break time ☕"
+                      ? "Break time"
                       : "In focus…"
                     : mode === "pomodoro"
                       ? phase === "break"
@@ -426,7 +435,7 @@ function FocusPage() {
               title="Log a distraction"
               className="focus-ring rounded-full bg-coral/20 px-4 py-3 text-sm font-semibold disabled:opacity-40"
             >
-              🙈 Distracted
+              <Icon symbol="Eye" size={16} className="mr-1 inline-block align-[-1px]" /> Distracted
             </button>
           </div>
 
@@ -450,7 +459,11 @@ function FocusPage() {
                     : "border-border bg-card hover:bg-accent",
                 )}
               >
-                {s === "off" ? "🔇 Off" : SOUND_LABELS[s]}
+                {s === "off" ? (
+                  <>
+                    <Icon symbol="VolumeX" size={14} className="mr-1 inline-block align-[-1px]" /> Off
+                  </>
+                ) : SOUND_LABELS[s]}
               </button>
             ))}
           </div>
@@ -499,7 +512,7 @@ function FocusPage() {
                   onClick={saveBreakdownAsTasks}
                   className="focus-ring mt-3 rounded-full bg-muted px-4 py-2 text-xs font-semibold hover:bg-accent"
                 >
-                  Save as tasks ✓
+                  Save as tasks
                 </button>
               </>
             )}
@@ -529,13 +542,13 @@ function FocusPage() {
                     title="Focus on this"
                     className="focus-ring grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm disabled:opacity-40"
                   >
-                    ⚡
+                    <Icon symbol="Zap" size={14} />
                   </button>
                 </div>
               ))}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Saved automatically. Tap ⚡ to start a sprint on that task.
+              Saved automatically. Tap the flash icon to start a sprint on that task.
             </p>
           </SoftCard>
         </div>
@@ -569,7 +582,7 @@ function FocusPage() {
           <SectionTitle {...(openTasks > 0 ? { hint: `${openTasks} left` } : {})}>My Tasks</SectionTitle>
           {tasks.length === 0 ? (
             <EmptyState
-              emoji="🧺"
+              emoji="ShoppingBasket"
               title="Nothing dumped yet"
               message="Write it down and it stops taking up space — then turn it into tasks."
             />
@@ -591,7 +604,7 @@ function FocusPage() {
                     aria-label={`Delete ${task.title}`}
                     className="focus-ring rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
                   >
-                    ✕
+                    <Icon symbol="X" size={12} />
                   </button>
                 </li>
               ))}
@@ -647,8 +660,8 @@ function FocusPage() {
 function StatCard({ emoji, label, value }: { emoji: string; label: string; value: string }) {
   return (
     <div className="card-soft flex items-center gap-3 p-4">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-muted text-lg" aria-hidden>
-        {emoji}
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-muted" aria-hidden>
+        <Icon symbol={emoji} size={20} />
       </span>
       <div className="min-w-0">
         <p className="truncate text-xs text-muted-foreground">{label}</p>

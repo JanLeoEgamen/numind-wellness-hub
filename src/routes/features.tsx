@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteChrome";
 import { SoftCard, CTALink } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 
 export const Route = createFileRoute("/features")({
   head: () => ({
@@ -15,9 +16,9 @@ export const Route = createFileRoute("/features")({
 });
 
 const GROUPS = [
-  { title: "Every day", items: [["🌞","Daily Reset","One minute, four questions, one intention."],["💧","My Wellness","Water, sleep, movement and self-care with your own goals."],["⚡","Focus Zone","Timer, top three, brain dump and task breakdowns."]] },
-  { title: "Grow", items: [["🧠","Mind Gym","Short guided activities for breath, focus and calm."],["🎓","Learning Lounge","Bite-sized wellness lessons and quick tips."],["📖","My Journal","Brain dumps, gratitude, wins and letters to future you."]] },
-  { title: "Play & progress", items: [["🏆","Wellness Quest","Daily, weekly, monthly and seasonal missions."],["🎮","Healthy Play","Trivia, bubbles, bingo and the wellness wheel."],["🌱","Wellness Garden","Watch your progress grow from seed to sanctuary."],["🎁","Rewards","Spend XP on decorations, themes and Numi accessories."],["🌸","Memory Lane","Look how far you've come."],["💙","Together","A positive-only community."]] },
+  { title: "Every day", items: [["Sun","Daily Reset","One minute, four questions, one intention."],["Droplets","My Wellness","Water, sleep, movement and self-care with your own goals."],["Zap","Focus Zone","Timer, top three, brain dump and task breakdowns."]] },
+  { title: "Grow", items: [["Brain","Mind Gym","Short guided activities for breath, focus and calm."],["GraduationCap","Learning Lounge","Bite-sized wellness lessons and quick tips."],["BookOpen","My Journal","Brain dumps, gratitude, wins and letters to future you."]] },
+  { title: "Play & progress", items: [["Trophy","Wellness Quest","Daily, weekly, monthly and seasonal missions."],["Gamepad2","Healthy Play","Trivia, bubbles, bingo and the wellness wheel."],["Sprout","Wellness Garden","Watch your progress grow from seed to sanctuary."],["Gift","Rewards","Spend XP on decorations, themes and Numi accessories."],["Flower2","Memory Lane","Look how far you've come."],["Heart","Together","A positive-only community."]] },
 ];
 
 function FeaturesPage() {
@@ -33,7 +34,9 @@ function FeaturesPage() {
               {g.items.map(([e, n, d]) => (
                 <li key={n}>
                   <SoftCard interactive className="h-full">
-                    <p className="text-3xl" aria-hidden>{e}</p>
+                    <p className="text-3xl" aria-hidden>
+                    <Icon symbol={e} size={32} />
+                  </p>
                     <h3 className="mt-3 text-lg font-bold">{n}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{d}</p>
                   </SoftCard>

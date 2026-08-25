@@ -10,6 +10,7 @@ import {
 } from "@/lib/server-functions";
 import { isUuid, useMyJournal } from "@/lib/server-data";
 import { EmptyState, PageHeader, SoftCard, ToneIcon } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,12 +35,12 @@ const MODE_TO_JOURNAL_TYPE: Record<string, string> = {
 
 // Reverse map (backend journal_type -> friendly chip text) for the entry list.
 const JOURNAL_TYPE_LABEL: Record<string, string> = {
-  brain_dump: "💭 Brain Dump",
-  gratitude: "🌈 Gratitude",
-  todays_win: "🌟 Today's Win",
-  tomorrows_goal: "🎯 Tomorrow's Goal",
-  letter_to_future_me: "💌 Letter to Future Me",
-  free: "📖 Free Journal",
+  brain_dump: "Brain Dump",
+  gratitude: "Gratitude",
+  todays_win: "Today's Win",
+  tomorrows_goal: "Tomorrow's Goal",
+  letter_to_future_me: "Letter to Future Me",
+  free: "Free Journal",
 };
 
 // Backend journal_type -> composer mode id (used when editing an entry).
@@ -55,15 +56,15 @@ const TYPE_TO_MODE: Record<string, string> = {
 // Mock fallback labels -> backend journal_type (so the warm demo entries
 // participate in the same letter/type logic as real ones).
 const MOCK_LABEL_TO_TYPE: Record<string, string> = {
-  "🌟 Today's Win": "todays_win",
-  "🌈 Gratitude": "gratitude",
-  "💭 Brain Dump": "brain_dump",
-  "💌 Letter to Future Me": "letter_to_future_me",
-  "🎯 Tomorrow's Goal": "tomorrows_goal",
-  "📖 Free Journal": "free",
+  "Today's Win": "todays_win",
+  Gratitude: "gratitude",
+  "Brain Dump": "brain_dump",
+  "Letter to Future Me": "letter_to_future_me",
+  "Tomorrow's Goal": "tomorrows_goal",
+  "Free Journal": "free",
 };
 
-const MOODS = ["😁 Amazing", "🙂 Good", "😐 Okay", "😔 Low", "🥀 Rough"];
+const MOODS = ["Amazing", "Good", "Okay", "Low", "Rough"];
 
 const formatDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
@@ -120,7 +121,7 @@ function JournalPage() {
   const serverEntries: EntryView[] = (srvJournal ?? []).map((j) => ({
     id: j.id,
     type: j.journal_type,
-    mode: JOURNAL_TYPE_LABEL[j.journal_type] ?? "📖 Free Journal",
+    mode: JOURNAL_TYPE_LABEL[j.journal_type] ?? "Free Journal",
     title: j.title ?? "Untitled",
     excerpt: j.content,
     date: formatDate(j.created_at),
@@ -233,7 +234,7 @@ function JournalPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        emoji="📖"
+        emoji="BookOpen"
         title="My Journal"
         subtitle="Your story starts with one small thought."
       />
@@ -300,7 +301,9 @@ function JournalPage() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">🔒 Private to you</span>
+          <span className="text-xs text-muted-foreground">
+              <Icon symbol="Lock" size={12} className="mr-1 inline-block align-[-1px]" /> Private to you
+            </span>
           {editingId ? (
             <button
               onClick={cancelEdit}
@@ -335,14 +338,14 @@ function JournalPage() {
             favOnly ? "bg-brand font-bold text-navy" : "bg-muted",
           )}
         >
-          ❤️ Favourites
+          <Icon symbol="Heart" size={14} className="mr-1 inline-block align-[-2px] text-coral" /> Favourites
         </button>
       </div>
 
       {entries.length === 0 ? (
         <div className="mt-5">
           <EmptyState
-            emoji="📖"
+            emoji="BookOpen"
             title="Nothing here yet"
             message="Your story starts with one small thought."
           />
@@ -362,7 +365,7 @@ function JournalPage() {
                     aria-label={favOf(e) ? "Remove from favourites" : "Add to favourites"}
                     className="focus-ring rounded-full p-1 text-base transition hover:bg-muted"
                   >
-                    {favOf(e) ? "❤️" : "🤍"}
+                    <Icon symbol={favOf(e) ? "Heart" : "Heart"} size={16} className={favOf(e) ? "fill-coral text-coral" : "text-muted-foreground"} />
                   </button>
                 </div>
                 <p className="mt-3 font-semibold">{e.title}</p>
@@ -381,13 +384,13 @@ function JournalPage() {
                     onClick={() => startEdit(e)}
                     className="focus-ring rounded-full bg-muted px-3 py-1.5 text-xs font-semibold hover:bg-accent"
                   >
-                    ✏️ Edit
+                    <Icon symbol="Pencil" size={13} className="mr-1 inline-block align-[-2px]" /> Edit
                   </button>
                   <button
                     onClick={() => setDeleting(e)}
                     className="focus-ring rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-coral hover:bg-accent"
                   >
-                    🗑 Delete
+                    <Icon symbol="Trash2" size={13} className="mr-1 inline-block align-[-2px]" /> Delete
                   </button>
                 </div>
               </SoftCard>
@@ -398,7 +401,7 @@ function JournalPage() {
 
       {letters.length > 0 ? (
         <div className="mt-6 flex items-center gap-3 rounded-3xl bg-accent/50 p-4">
-          <ToneIcon emoji="💌" tone="lavender" />
+          <ToneIcon emoji="Mail" tone="lavender" />
           <div>
             <p className="font-semibold">
               {letters.length} {letters.length === 1 ? "letter" : "letters"} to future you{" "}
@@ -415,7 +418,7 @@ function JournalPage() {
         <AlertDialogContent className="max-w-sm rounded-3xl text-center">
           <AlertDialogHeader className="items-center text-center">
             <span className="text-4xl" aria-hidden>
-              🗑
+              <Icon symbol="Trash2" size={40} />
             </span>
             <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
             <AlertDialogDescription>

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { FAQS, GARDEN_STAGES, PLANS, PLAY_ACTIVITIES } from "@/lib/mock-data";
 import { SiteLayout, PricingCards } from "@/components/layout/SiteChrome";
 import { NumiAvatar, SoftCard, ToneIcon } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -16,18 +17,18 @@ export const Route = createFileRoute("/")({
 });
 
 const PILLARS = [
-  { emoji: "🌞", name: "Daily Reset", desc: "A one-minute ritual to start the day on your side.", tone: "sun" },
-  { emoji: "🧠", name: "Mind Gym", desc: "Short breathing, focus and calm sessions.", tone: "teal" },
-  { emoji: "🏆", name: "Wellness Quest", desc: "Missions that make good habits feel like a game.", tone: "lavender" },
-  { emoji: "🎮", name: "Healthy Play", desc: "Trivia, bubbles and bingo that still count.", tone: "coral" },
-  { emoji: "🤖", name: "Numi AI", desc: "A companion that motivates and celebrates.", tone: "cyan" },
-  { emoji: "🌱", name: "Wellness Garden", desc: "Your progress, growing where you can see it.", tone: "mint" },
+  { emoji: "Sun", name: "Daily Reset", desc: "A one-minute ritual to start the day on your side.", tone: "sun" },
+  { emoji: "Brain", name: "Mind Gym", desc: "Short breathing, focus and calm sessions.", tone: "teal" },
+  { emoji: "Trophy", name: "Wellness Quest", desc: "Missions that make good habits feel like a game.", tone: "lavender" },
+  { emoji: "Gamepad2", name: "Healthy Play", desc: "Trivia, bubbles and bingo that still count.", tone: "coral" },
+  { emoji: "Bot", name: "Numi AI", desc: "A companion that motivates and celebrates.", tone: "cyan" },
+  { emoji: "Sprout", name: "Wellness Garden", desc: "Your progress, growing where you can see it.", tone: "mint" },
 ];
 
 const FEATURES = [
-  ["🧠","Mind Gym"],["🎮","Healthy Play"],["📖","My Journal"],["🎓","Learning Lounge"],
-  ["🌸","Memory Lane"],["✨","My Journey"],["🎁","Rewards"],["💙","Together"],
-  ["💧","My Wellness"],["⚡","Focus Zone"],["🏆","Wellness Quest"],["🌱","My Garden"],
+  ["Brain","Mind Gym"],["Gamepad2","Healthy Play"],["BookOpen","My Journal"],["GraduationCap","Learning Lounge"],
+  ["Flower2","Memory Lane"],["Sparkles","My Journey"],["Gift","Rewards"],["Heart","Together"],
+  ["Droplets","My Wellness"],["Zap","Focus Zone"],["Trophy","Wellness Quest"],["Sprout","My Garden"],
 ];
 
 function Landing() {
@@ -49,20 +50,32 @@ function Landing() {
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
               <span className="rounded-xl bg-navy px-4 py-2.5 text-xs font-semibold text-background dark:bg-surface dark:text-foreground"> Download on the App Store</span>
-              <span className="rounded-xl bg-navy px-4 py-2.5 text-xs font-semibold text-background dark:bg-surface dark:text-foreground">▶ Get it on Google Play</span>
+              <span className="rounded-xl bg-navy px-4 py-2.5 text-xs font-semibold text-background dark:bg-surface dark:text-foreground">
+                <Icon symbol="Play" size={12} className="mr-1 inline-block" /> Get it on Google Play
+              </span>
             </div>
           </div>
           <div className="relative grid place-items-center">
             <div className="animate-float w-[280px] rounded-[2.5rem] border-8 border-navy bg-background p-4 shadow-lift dark:border-surface-2">
-              <p className="text-sm font-bold">🌞 Good morning, Sarah!</p>
+              <p className="text-sm font-bold">
+              <Icon symbol="Sun" size={16} className="mr-1 inline-block align-[-2px]" /> Good morning, Sarah!
+            </p>
               <div className="mt-3 rounded-3xl bg-garden p-4 text-center">
-                <p className="text-4xl" aria-hidden>🌳</p>
+                <p className="text-4xl" aria-hidden>
+                  <Icon symbol="Trees" size={36} className="text-mint" />
+                </p>
                 <p className="mt-1 text-xs font-semibold">Your garden is Thriving</p>
               </div>
               <div className="mt-3 grid gap-2 text-xs">
-                <p className="rounded-2xl bg-muted px-3 py-2.5">🌞 Daily Reset · +20 XP</p>
-                <p className="rounded-2xl bg-muted px-3 py-2.5">🧠 Mind Gym · +20 XP</p>
-                <p className="rounded-2xl bg-teal/20 px-3 py-2.5 font-semibold">🔥 12-day streak</p>
+                <p className="rounded-2xl bg-muted px-3 py-2.5">
+                  <Icon symbol="Sun" size={14} className="mr-1 inline-block align-[-2px]" /> Daily Reset · +20 XP
+                </p>
+                <p className="rounded-2xl bg-muted px-3 py-2.5">
+                  <Icon symbol="Brain" size={14} className="mr-1 inline-block align-[-2px]" /> Mind Gym · +20 XP
+                </p>
+                <p className="rounded-2xl bg-teal/20 px-3 py-2.5 font-semibold">
+                  <Icon symbol="Flame" size={14} fill className="mr-1 inline-block align-[-2px] text-coral" /> 12-day streak
+                </p>
               </div>
             </div>
             <div className="absolute -bottom-4 -left-2 hidden sm:block"><NumiAvatar size={72} className="animate-float" /></div>
@@ -97,7 +110,9 @@ function Landing() {
             <Link to="/features" className="focus-ring mt-6 inline-flex rounded-full bg-brand px-6 py-3 text-sm font-bold text-navy">See everything</Link>
           </div>
           <div className="rounded-4xl bg-hero p-8 text-center">
-            <p className="text-6xl" aria-hidden>📱</p>
+            <p className="text-6xl" aria-hidden>
+              <Icon symbol="Smartphone" size={56} />
+            </p>
             <p className="mt-3 text-sm text-muted-foreground">One calm home screen, everything connected.</p>
           </div>
         </div>
@@ -108,7 +123,9 @@ function Landing() {
         <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {FEATURES.map(([e, n]) => (
             <li key={n} className="card-soft hover-lift p-5 text-center">
-              <p className="text-3xl" aria-hidden>{e}</p>
+              <p className="text-3xl" aria-hidden>
+                <Icon symbol={e} size={32} />
+              </p>
               <p className="mt-2 text-sm font-semibold">{n}</p>
             </li>
           ))}
@@ -135,7 +152,9 @@ function Landing() {
         <ol className="mt-8 flex flex-wrap gap-3">
           {GARDEN_STAGES.map((g) => (
             <li key={g.name} className="card-soft flex-1 min-w-[140px] p-5 text-center">
-              <p className="text-4xl" aria-hidden>{g.emoji}</p>
+              <p className="text-4xl" aria-hidden>
+                <Icon symbol={g.emoji} size={36} />
+              </p>
               <p className="mt-2 text-sm font-semibold">{g.name}</p>
             </li>
           ))}
@@ -146,9 +165,11 @@ function Landing() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="text-3xl font-bold">Progress you can actually see</h2>
           <ul className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {[["⭐","XP"],["🎚","Levels"],["🔥","Streaks"],["🎖","Badges"],["🎁","Rewards"],["🌳","Garden growth"]].map(([e, n]) => (
+            {[["Star","XP"],["SlidersHorizontal","Levels"],["Flame","Streaks"],["Award","Badges"],["Gift","Rewards"],["Trees","Garden growth"]].map(([e, n]) => (
               <li key={n} className="card-soft p-5 text-center">
-                <p className="text-3xl" aria-hidden>{e}</p>
+                <p className="text-3xl" aria-hidden>
+                  <Icon symbol={e} size={32} />
+                </p>
                 <p className="mt-2 text-sm font-semibold">{n}</p>
               </li>
             ))}
@@ -161,7 +182,9 @@ function Landing() {
         <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PLAY_ACTIVITIES.slice(0, 8).map((p) => (
             <li key={p.id} className="card-soft hover-lift p-5">
-              <p className="text-3xl" aria-hidden>{p.emoji}</p>
+              <p className="text-3xl" aria-hidden>
+                <Icon symbol={p.emoji} size={32} />
+              </p>
               <p className="mt-2 font-semibold">{p.name}</p>
               <p className="text-sm text-muted-foreground">{p.desc}</p>
             </li>
@@ -172,8 +195,10 @@ function Landing() {
       <section className="mx-auto max-w-4xl px-4 pb-4 sm:px-6">
         <div className="card-soft grid gap-4 p-8 sm:grid-cols-2">
           <h2 className="text-2xl font-bold sm:col-span-2">Made for everyone</h2>
-          {[["🌍","Consumer wellness, not medical advice"],["🔒","Private by default"],["🛡","Secure and yours"],["🙌","Cancel anytime"]].map(([e, t]) => (
-            <p key={t} className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-sm"><span aria-hidden className="text-xl">{e}</span>{t}</p>
+          {[["Globe","Consumer wellness, not medical advice"],["Lock","Private by default"],["Shield","Secure and yours"],["HandHeart","Cancel anytime"]].map(([e, t]) => (
+            <p key={t} className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-sm">
+              <Icon symbol={e} size={18} className="shrink-0 text-teal" /> {t}
+            </p>
           ))}
         </div>
       </section>

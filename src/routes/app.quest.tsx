@@ -6,6 +6,7 @@ import { useNuMind } from "@/lib/numind-store";
 import { completeQuest } from "@/lib/server-functions";
 import { useMyQuests, isUuid } from "@/lib/server-data";
 import { PageHeader, SoftCard, ProgressBar, XPBadge, ToneIcon } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/quest")({
@@ -75,7 +76,7 @@ function QuestPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        emoji="🏆"
+        emoji="Trophy"
         title="Wellness Quest"
         subtitle="Little missions that add up to good days."
       />
@@ -111,7 +112,7 @@ function QuestPage() {
               <SoftCard className="flex h-full flex-col">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <ToneIcon emoji={q.emoji ?? "🏆"} tone={done ? "mint" : "lavender"} />
+                    <ToneIcon emoji={q.emoji ?? "Trophy"} tone={done ? "mint" : "lavender"} />
                     <div>
                       <p className="font-semibold">{q.name}</p>
                       <p className="text-sm text-muted-foreground">{q.desc}</p>
@@ -137,7 +138,11 @@ function QuestPage() {
                     done ? "bg-mint/40 text-foreground" : "bg-brand text-navy hover:brightness-105",
                   )}
                 >
-                  {done ? "Complete ✓" : "Mark complete"}
+                  {done ? (
+                  <>
+                    <Icon symbol="Check" size={14} className="mr-1 inline-block align-[-1px]" /> Complete
+                  </>
+                ) : "Mark complete"}
                 </button>
               </SoftCard>
             </li>
@@ -147,7 +152,7 @@ function QuestPage() {
 
       <SoftCard className="mt-6 bg-hero text-center">
         <p className={cn("text-5xl", chestReady && !chestOpened && "animate-float")} aria-hidden>
-          {chestReady && !chestOpened ? "🎁" : "🔒"}
+          <Icon symbol={chestReady && !chestOpened ? "Gift" : "Lock"} size={48} />
         </p>
         <h2 className="mt-3 text-lg font-bold">Daily Treasure Chest</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -169,7 +174,7 @@ function QuestPage() {
           onClick={() => {
             setChestOpened(true);
             celebrate({
-              emoji: "🎁",
+              emoji: "Gift",
               title: "Treasure chest opened!",
               message: "You found a Streak Saver and 80 bonus XP.",
               xp: 80,
@@ -178,7 +183,7 @@ function QuestPage() {
           }}
           className="focus-ring mt-5 rounded-full bg-brand px-6 py-3 text-sm font-bold text-navy disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
-          {chestOpened ? "Opened ✓" : chestReady ? "Open chest" : "Locked"}
+          {chestOpened ? "Opened" : chestReady ? "Open chest" : "Locked"}
         </button>
       </SoftCard>
     </div>

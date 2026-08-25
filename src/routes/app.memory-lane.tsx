@@ -7,6 +7,7 @@ import {
 } from "@/lib/server-functions";
 import { useMyMemories, isUuid } from "@/lib/server-data";
 import { PageHeader, SoftCard, CTALink, ToneIcon, EmptyState } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/memory-lane")({
@@ -67,7 +68,7 @@ function MemoryLane() {
 
   const list: MemoryView[] = (srvMemories ?? []).map((m, i) => ({
     id: m.id,
-    emoji: m.emoji ?? "🌸",
+    emoji: m.emoji ?? "Flower2",
     title: m.title,
     description: m.description ?? undefined,
     date: formatDate(m.created_at),
@@ -107,11 +108,11 @@ function MemoryLane() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader emoji="🌸" title="Look How Far You've Come" subtitle="Your milestones, gathered in one warm place." />
+      <PageHeader emoji="Flower2" title="Look How Far You've Come" subtitle="Your milestones, gathered in one warm place." />
 
       <ul className="mt-6 grid gap-3">
         {srvMemories === undefined ? null : ordered.length === 0 ? (
-          <EmptyState emoji="🌱" title="No memories yet" message="Your memories will appear here as you grow." />
+          <EmptyState emoji="Sprout" title="No memories yet" message="Your memories will appear here as you grow." />
         ) : (
           ordered.map((m) => (
             <li key={m.id}>
@@ -128,14 +129,14 @@ function MemoryLane() {
                     aria-pressed={favs.includes(m.id)}
                     className={cn("focus-ring rounded-full px-3 py-2 text-sm", favs.includes(m.id) ? "bg-coral/25 font-semibold" : "bg-muted")}
                   >
-                    ❤️ Favourite
+                    <Icon symbol="Heart" size={14} className="mr-1 inline-block align-[-2px]" /> Favourite
                   </button>
                   <button
                     onClick={() => togglePin(m)}
                     aria-pressed={pins.includes(m.id)}
                     className={cn("focus-ring rounded-full px-3 py-2 text-sm", pins.includes(m.id) ? "bg-lavender/40 font-semibold" : "bg-muted")}
                   >
-                    📌 Pin
+                    <Icon symbol="Pin" size={14} className="mr-1 inline-block align-[-2px]" /> Pin
                   </button>
                 </div>
               </SoftCard>
@@ -145,7 +146,9 @@ function MemoryLane() {
       </ul>
 
       <div className="mt-6 flex justify-center">
-        <CTALink to="/app/journey">➡️ View Journey</CTALink>
+        <CTALink to="/app/journey">
+          <Icon symbol="ArrowRight" size={16} className="mr-1 inline-block" /> View Journey
+        </CTALink>
       </div>
     </div>
   );

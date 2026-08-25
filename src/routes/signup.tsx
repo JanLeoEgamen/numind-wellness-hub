@@ -71,7 +71,7 @@ function SignupPage() {
     >
       {sent ? (
         <div className="grid gap-3 text-sm">
-          <p className="text-base font-semibold">Check your inbox 🌱</p>
+          <p className="text-base font-semibold">Check your inbox — your first seed is waiting.</p>
           <p className="text-muted-foreground">
             We sent a confirmation link to your email. Click it and we'll set up your first day together — your
             goals, your avatar and your first seed.

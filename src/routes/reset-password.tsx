@@ -50,7 +50,7 @@ function ResetPasswordPage() {
       toast.error(error.message);
       return;
     }
-    toast.success("Password updated 🌿");
+    toast.success("Password updated!");
     navigate({ to: "/app" });
   }
 

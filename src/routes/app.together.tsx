@@ -15,6 +15,7 @@ import {
   EmptyState,
   DisclaimerNote,
 } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/together")({
@@ -68,7 +69,7 @@ interface ServerPost {
 const toView = (p: ServerPost): PostView => ({
   id: p.id,
   author: p.authorName ?? (p.anonymous ? "Anonymous" : "NuMind member"),
-  avatar: p.avatar ?? p.emoji ?? "🌿",
+  avatar: p.avatar ?? p.emoji ?? "Sprout",
   text: p.content,
   hearts: p.reactions?.["heart"] ?? 0,
   claps: p.reactions?.["clap"] ?? 0,
@@ -83,7 +84,7 @@ function TogetherPage() {
   const { data: community } = useCommunityStats();
   const myProfile = useMyStats().data?.profile;
   const myName = myProfile?.nickname ?? [myProfile?.firstName, myProfile?.lastName].filter(Boolean).join(" ").trim() ?? "You";
-  const myAvatar = myProfile?.avatar ?? "🌷";
+  const myAvatar = myProfile?.avatar ?? "Flower2";
   const [tab, setTab] = useState<(typeof TABS)[number]>("Inspiration Wall");
   const [posts, setPosts] = useState<PostView[]>(COMMUNITY_POSTS as PostView[]);
   const [text, setText] = useState("");
@@ -143,21 +144,21 @@ function TogetherPage() {
   const challenges: { emoji: string; title: string; value: number; unit: string; target: number }[] = community
     ? [
         {
-          emoji: "🧠",
+          emoji: "Brain",
           title: "Mindful Minutes",
           value: community.totalFocusMinutes,
           unit: "minutes shared",
           target: Math.max(1000, Math.ceil(community.totalFocusMinutes / 1000) * 1000),
         },
         {
-          emoji: "🌞",
+          emoji: "Sun",
           title: "Daily Resets",
           value: community.totalResets,
           unit: "resets",
           target: Math.max(100, Math.ceil(community.totalResets / 100) * 100),
         },
         {
-          emoji: "🌱",
+          emoji: "Sprout",
           title: "Garden Seeds",
           value: community.totalGardenItems,
           unit: "items planted",
@@ -169,7 +170,7 @@ function TogetherPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        emoji="💙"
+        emoji="Heart"
         title="Together"
         subtitle="Small encouragement from people doing the same small things."
       />
@@ -208,7 +209,9 @@ function TogetherPage() {
             </SoftCard>
           )}
           <SoftCard>
-            <SectionTitle hint="Community">🎉 Community Milestone</SectionTitle>
+            <SectionTitle hint="Community">
+              <Icon symbol="PartyPopper" size={18} className="mr-1 inline-block align-[-2px]" /> Community Milestone
+            </SectionTitle>
             <p className="text-sm">
               {community
                 ? `Together the NuMind community has logged ${community.totalFocusMinutes.toLocaleString()} mindful minutes, ${community.totalResets.toLocaleString()} Daily Resets and ${community.totalGardenItems.toLocaleString()} garden items.`
@@ -279,7 +282,7 @@ function TogetherPage() {
           {filtered.length === 0 ? (
             <div className="mt-5">
               <EmptyState
-                emoji="💙"
+                emoji="Heart"
                 title="It's quiet here"
                 message="Be the first to share a little positivity."
               />
@@ -290,7 +293,7 @@ function TogetherPage() {
                 const reactionBtn = (
                   field: "hearts" | "claps" | "stars",
                   reaction: string,
-                  emoji: string,
+                  icon: string,
                 ) => {
                   const active = (p.myReaction ?? []).includes(reaction);
                   return (
@@ -302,7 +305,7 @@ function TogetherPage() {
                         active ? "bg-mint/40 font-semibold" : "bg-muted",
                       )}
                     >
-                      {emoji} {p[field]}
+                      <Icon symbol={icon} size={14} className="mr-1 inline-block align-[-2px]" /> {p[field]}
                     </button>
                   );
                 };
@@ -320,7 +323,7 @@ function TogetherPage() {
                         <div className="ml-auto flex flex-wrap items-center gap-2">
                           {reportedIds.has(p.id) ? (
                             <span className="rounded-full bg-mint/30 px-3 py-1.5 text-xs font-semibold">
-                              Reported ✓
+                              Reported
                             </span>
                           ) : reportingId === p.id ? (
                             <>
@@ -352,9 +355,9 @@ function TogetherPage() {
                       </div>
                       <p className="mt-3 text-sm">{p.text}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {reactionBtn("hearts", "heart", "❤️")}
-                        {reactionBtn("claps", "clap", "👏")}
-                        {reactionBtn("stars", "star", "🌟")}
+                        {reactionBtn("hearts", "heart", "Heart")}
+                        {reactionBtn("claps", "clap", "HandHeart")}
+                        {reactionBtn("stars", "star", "Sparkles")}
                       </div>
                     </SoftCard>
                   </li>

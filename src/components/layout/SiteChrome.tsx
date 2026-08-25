@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAuth, signOut } from "@/hooks/useAuth";
+import { Icon } from "@/components/numind/icon";
 
 const NAV = [
   { to: "/features", label: "Features" },
@@ -44,7 +45,9 @@ function SiteLayoutInner({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="focus-ring flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg" aria-hidden>🧠</span>
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg" aria-hidden>
+              <Icon symbol="Brain" size={20} className="text-navy" />
+            </span>
             <span className="text-lg font-bold">NuMind</span>
           </Link>
           <nav aria-label="Main" className="ml-4 hidden gap-1 md:flex">
@@ -63,11 +66,16 @@ function SiteLayoutInner({ children }: { children: ReactNode }) {
       <footer className="mt-20 border-t border-border bg-surface-2/40">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
           <div>
-            <p className="flex items-center gap-2 text-lg font-bold"><span aria-hidden>🧠</span> NuMind</p>
+            <p className="flex items-center gap-2 text-lg font-bold">
+              <Icon symbol="Brain" size={20} />
+              NuMind
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">Reset • Focus • Grow</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="rounded-xl bg-navy px-3 py-2 text-xs font-semibold text-background dark:bg-surface dark:text-foreground"> App Store</span>
-              <span className="rounded-xl bg-navy px-3 py-2 text-xs font-semibold text-background dark:bg-surface dark:text-foreground">▶ Google Play</span>
+              <span className="rounded-xl bg-navy px-3 py-2 text-xs font-semibold text-background dark:bg-surface dark:text-foreground">
+                <Icon symbol="Play" size={12} className="mr-1 inline-block" /> Google Play
+              </span>
             </div>
           </div>
           <div>
@@ -109,7 +117,9 @@ export function PricingCards({ annual = false, plans }: { annual?: boolean; plan
         <li key={p.id}>
           <div className={`card-soft hover-lift flex h-full flex-col p-6 ${p.popular ? "border-teal ring-2 ring-teal/40" : ""}`}>
             {p.popular ? <span className="mb-3 w-fit rounded-full bg-brand px-3 py-1 text-xs font-bold text-navy">Most loved</span> : null}
-            <p className="text-3xl" aria-hidden>{p.emoji}</p>
+            <p className="text-3xl" aria-hidden>
+              <Icon symbol={p.emoji} size={32} className="text-foreground" />
+            </p>
             <h3 className="mt-2 text-xl font-bold">{p.name}</h3>
             <p className="text-sm text-muted-foreground">{p.tagline}</p>
             <p className="mt-4 text-3xl font-bold">
@@ -118,7 +128,10 @@ export function PricingCards({ annual = false, plans }: { annual?: boolean; plan
             </p>
             <ul className="mt-5 grid flex-1 gap-2 text-sm">
               {p.features.map((f) => (
-                <li key={f} className="flex gap-2"><span className="text-teal" aria-hidden>✓</span>{f}</li>
+                <li key={f} className="flex gap-2">
+                  <Icon symbol="Check" size={14} strokeWidth={2.5} className="mt-0.5 shrink-0 text-teal" />
+                  {f}
+                </li>
               ))}
             </ul>
             <Link to="/signup" className={`focus-ring mt-6 rounded-full px-5 py-3 text-center text-sm font-bold ${p.popular ? "bg-brand text-navy" : "bg-muted hover:bg-accent"}`}>

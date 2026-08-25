@@ -12,6 +12,7 @@ import {
   EmptyState,
   ToneIcon,
 } from "@/components/numind/ui-kit";
+import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/mind-gym")({
@@ -73,7 +74,7 @@ function MindGym() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        emoji="🧠"
+        emoji="Brain"
         title="Mind Gym"
         subtitle="A library of short activities. Two minutes counts."
       />
@@ -107,7 +108,7 @@ function MindGym() {
                 cat === c.id ? "border-teal bg-teal/15 font-semibold" : "border-border bg-card",
               )}
             >
-              <span aria-hidden>{c.emoji}</span> {c.name}
+              <Icon symbol={c.emoji} size={16} className="mr-1 inline-block align-[-2px]" /> {c.name}
             </button>
           ))}
         </div>
@@ -116,7 +117,7 @@ function MindGym() {
       {list.length === 0 ? (
         <div className="mt-6">
           <EmptyState
-            emoji="🧘"
+            emoji="PersonStanding"
             title="Nothing here yet"
             message="Try another category — there's always something short you can do."
           />
@@ -154,7 +155,11 @@ function MindGym() {
                           : "bg-brand text-navy hover:brightness-105",
                     )}
                   >
-                    {a.locked ? "Unlock with NuMind+" : done ? "Completed ✓ Do it again" : "Start"}
+                    {a.locked ? "Unlock with NuMind+" : done ? (
+                  <>
+                    <Icon symbol="Check" size={13} className="mr-1 inline-block align-[-1px]" /> Completed · Do it again
+                  </>
+                ) : "Start"}
                   </button>
                 </SoftCard>
               </li>
@@ -247,7 +252,7 @@ function MindGym() {
                         "Garden growth updated",
                         "Badge progress updated",
                         "My Journey updated",
-                        "Numi is celebrating 🤖",
+                        "Numi is celebrating!",
                       ],
                     });
                     // Persist the completion to the backend. Only posts when we
