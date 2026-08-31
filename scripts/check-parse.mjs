@@ -36,6 +36,10 @@ const files = [
   "src/routes/app.safety.tsx",
   "src/routes/app.together.tsx",
   "src/routes/app.journal.tsx",
+  "src/routes/app.check-ins.tsx",
+  "src/routes/app.reports.tsx",
+  "src/lib/screening-instruments.ts",
+  "src/components/numind/safety-support.tsx",
 ];
 
 let fail = 0;

@@ -115,6 +115,13 @@ import {
   Wind,
   X,
   Zap,
+  CalendarRange,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  HeartPulse,
+  PhoneCall,
+  Stethoscope,
 Timer,
   type LucideIcon,
 } from "lucide-react";
@@ -248,6 +255,13 @@ Timer,
   Wind,
   X,
   Zap,
+  CalendarRange,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  HeartPulse,
+  PhoneCall,
+  Stethoscope,
 } satisfies Record<string, LucideIcon>;
 
 /** Legacy emoji character → lucide icon name. */

@@ -25,6 +25,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
+import { Route as AppCheckInsRouteImport } from './routes/app.check-ins'
 import { Route as AppFocusRouteImport } from './routes/app.focus'
 import { Route as AppGardenRouteImport } from './routes/app.garden'
 import { Route as AppJournalRouteImport } from './routes/app.journal'
@@ -37,6 +38,7 @@ import { Route as AppNumiRouteImport } from './routes/app.numi'
 import { Route as AppPlayRouteImport } from './routes/app.play'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppQuestRouteImport } from './routes/app.quest'
+import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppResetRouteImport } from './routes/app.reset'
 import { Route as AppRewardsRouteImport } from './routes/app.rewards'
 import { Route as AppSafetyRouteImport } from './routes/app.safety'
@@ -124,6 +126,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCheckInsRoute = AppCheckInsRouteImport.update({
+  id: '/check-ins',
+  path: '/check-ins',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFocusRoute = AppFocusRouteImport.update({
   id: '/focus',
   path: '/focus',
@@ -184,6 +191,11 @@ const AppQuestRoute = AppQuestRouteImport.update({
   path: '/quest',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppResetRoute = AppResetRouteImport.update({
   id: '/reset',
   path: '/reset',
@@ -231,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/check-ins': typeof AppCheckInsRoute
   '/app/focus': typeof AppFocusRoute
   '/app/garden': typeof AppGardenRoute
   '/app/journal': typeof AppJournalRoute
@@ -243,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/app/play': typeof AppPlayRoute
   '/app/profile': typeof AppProfileRoute
   '/app/quest': typeof AppQuestRoute
+  '/app/reports': typeof AppReportsRoute
   '/app/reset': typeof AppResetRoute
   '/app/rewards': typeof AppRewardsRoute
   '/app/safety': typeof AppSafetyRoute
@@ -266,6 +280,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/check-ins': typeof AppCheckInsRoute
   '/app/focus': typeof AppFocusRoute
   '/app/garden': typeof AppGardenRoute
   '/app/journal': typeof AppJournalRoute
@@ -278,6 +293,7 @@ export interface FileRoutesByTo {
   '/app/play': typeof AppPlayRoute
   '/app/profile': typeof AppProfileRoute
   '/app/quest': typeof AppQuestRoute
+  '/app/reports': typeof AppReportsRoute
   '/app/reset': typeof AppResetRoute
   '/app/rewards': typeof AppRewardsRoute
   '/app/safety': typeof AppSafetyRoute
@@ -303,6 +319,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/check-ins': typeof AppCheckInsRoute
   '/app/focus': typeof AppFocusRoute
   '/app/garden': typeof AppGardenRoute
   '/app/journal': typeof AppJournalRoute
@@ -315,6 +332,7 @@ export interface FileRoutesById {
   '/app/play': typeof AppPlayRoute
   '/app/profile': typeof AppProfileRoute
   '/app/quest': typeof AppQuestRoute
+  '/app/reports': typeof AppReportsRoute
   '/app/reset': typeof AppResetRoute
   '/app/rewards': typeof AppRewardsRoute
   '/app/safety': typeof AppSafetyRoute
@@ -341,6 +359,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/app/analytics'
+    | '/app/check-ins'
     | '/app/focus'
     | '/app/garden'
     | '/app/journal'
@@ -353,6 +372,7 @@ export interface FileRouteTypes {
     | '/app/play'
     | '/app/profile'
     | '/app/quest'
+    | '/app/reports'
     | '/app/reset'
     | '/app/rewards'
     | '/app/safety'
@@ -376,6 +396,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/app/analytics'
+    | '/app/check-ins'
     | '/app/focus'
     | '/app/garden'
     | '/app/journal'
@@ -388,6 +409,7 @@ export interface FileRouteTypes {
     | '/app/play'
     | '/app/profile'
     | '/app/quest'
+    | '/app/reports'
     | '/app/reset'
     | '/app/rewards'
     | '/app/safety'
@@ -412,6 +434,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/app/analytics'
+    | '/app/check-ins'
     | '/app/focus'
     | '/app/garden'
     | '/app/journal'
@@ -424,6 +447,7 @@ export interface FileRouteTypes {
     | '/app/play'
     | '/app/profile'
     | '/app/quest'
+    | '/app/reports'
     | '/app/reset'
     | '/app/rewards'
     | '/app/safety'
@@ -564,6 +588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/check-ins': {
+      id: '/app/check-ins'
+      path: '/check-ins'
+      fullPath: '/app/check-ins'
+      preLoaderRoute: typeof AppCheckInsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/focus': {
       id: '/app/focus'
       path: '/focus'
@@ -648,6 +679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQuestRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/reports': {
+      id: '/app/reports'
+      path: '/reports'
+      fullPath: '/app/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/reset': {
       id: '/app/reset'
       path: '/reset'
@@ -695,6 +733,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppCheckInsRoute: typeof AppCheckInsRoute
   AppFocusRoute: typeof AppFocusRoute
   AppGardenRoute: typeof AppGardenRoute
   AppJournalRoute: typeof AppJournalRoute
@@ -707,6 +746,7 @@ interface AppRouteChildren {
   AppPlayRoute: typeof AppPlayRoute
   AppProfileRoute: typeof AppProfileRoute
   AppQuestRoute: typeof AppQuestRoute
+  AppReportsRoute: typeof AppReportsRoute
   AppResetRoute: typeof AppResetRoute
   AppRewardsRoute: typeof AppRewardsRoute
   AppSafetyRoute: typeof AppSafetyRoute
@@ -718,6 +758,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
+  AppCheckInsRoute: AppCheckInsRoute,
   AppFocusRoute: AppFocusRoute,
   AppGardenRoute: AppGardenRoute,
   AppJournalRoute: AppJournalRoute,
@@ -730,6 +771,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPlayRoute: AppPlayRoute,
   AppProfileRoute: AppProfileRoute,
   AppQuestRoute: AppQuestRoute,
+  AppReportsRoute: AppReportsRoute,
   AppResetRoute: AppResetRoute,
   AppRewardsRoute: AppRewardsRoute,
   AppSafetyRoute: AppSafetyRoute,

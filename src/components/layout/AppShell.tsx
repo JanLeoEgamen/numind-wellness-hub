@@ -29,12 +29,14 @@ const PRIMARY = [
 
 const MORE = [
   { to: "/app/wellness", icon: "Droplets", label: "My Wellness" },
+  { to: "/app/check-ins", icon: "ClipboardCheck", label: "Check-Ins" },
   { to: "/app/journal", icon: "BookOpen", label: "My Journal" },
   { to: "/app/memory-lane", icon: "Flower2", label: "Memory Lane" },
   { to: "/app/together", icon: "Heart", label: "Together" },
   { to: "/app/learning", icon: "GraduationCap", label: "Learning Lounge" },
   { to: "/app/journey", icon: "Sparkles", label: "My Journey" },
   { to: "/app/analytics", icon: "ChartColumn", label: "My Analytics" },
+  { to: "/app/reports", icon: "FileText", label: "My Wellness Reports" },
   { to: "/app/rewards", icon: "Gift", label: "Rewards" },
   { to: "/app/garden", icon: "Sprout", label: "My Garden" },
   { to: "/app/focus", icon: "Zap", label: "Focus Zone" },

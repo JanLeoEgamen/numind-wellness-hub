@@ -3282,6 +3282,7 @@ const USER_TABLES_BY_USER_ID = [
   "community_posts",
   "community_reactions",
   "user_roles",
+  "screening_completions",
 ] as const;
 
 const USER_TABLES_BY_ID = ["profiles", "user_preferences"] as const;
@@ -3321,6 +3322,455 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------------------------------------------------------------------------
+// 22a. Symptom screenings (PHQ-9 / GAD-7)
+// ---------------------------------------------------------------------------
+
+export type ScreeningCompletion = {
+  id: string;
+  instrument: "PHQ9" | "GAD7";
+  score: number;
+  rangeLabel: string;
+  responses: number[];
+  completedAt: string;
+};
+
+export type SaveScreeningCompletionInput = {
+  instrument: "PHQ9" | "GAD7";
+  score: number;
+  rangeLabel: string;
+  responses: number[];
+  /** PHQ-9 SAFETY LOGIC (README §25): flagged completions award no XP. */
+  safetyFlag?: boolean;
+};
+
+export const saveScreeningCompletion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: SaveScreeningCompletionInput) => d)
+  .handler(async ({ context, data }): Promise<{ ok: true; screeningId: string }> => {
+    const { supabase, userId } = context;
+    const expected = data.instrument === "PHQ9" ? 9 : 7;
+    if (!Array.isArray(data.responses) || data.responses.length !== expected) {
+      throw new Error("Invalid screening responses.");
+    }
+    const responses = data.responses.map((n) => {
+      if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 3) {
+        throw new Error("Invalid response value.");
+      }
+      return Math.round(n);
+    });
+    const score = Math.max(0, Math.min(expected * 3, Math.round(data.score || 0)));
+    const rangeLabels = ["Minimal", "Mild", "Moderate", "Moderately severe", "Severe"];
+    const rangeLabel = rangeLabels.includes(data.rangeLabel) ? data.rangeLabel : "Minimal";
+
+    const { data: row, error } = await supabase
+      .from("screening_completions")
+      .insert({
+        user_id: userId,
+        instrument: data.instrument,
+        score,
+        range_label: rangeLabel,
+        responses,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+
+    // Safety-flagged completions never award XP — the SafetySupportPanel is
+    // shown first and celebrations / points are suppressed by design.
+    if (!data.safetyFlag) {
+      await awardXp({
+        data: {
+          amount: 10,
+          sourceType: "screening",
+          sourceId: row.id,
+          description: `Symptom Check-In: ${data.instrument}`,
+        },
+      }).catch(() => {});
+    }
+
+    return { ok: true, screeningId: row.id };
+  });
+
+// ---------------------------------------------------------------------------
+// 22b. Safety resources + screening history (supports SafetySupportPanel /
+// check-in history + Report Center)
+// ---------------------------------------------------------------------------
+export type SafetyResource = {
+  id: string;
+  name: string;
+  description: string | null;
+  countryCode: string;
+  phone: string | null;
+  sms: string | null;
+  url: string | null;
+  hours: string | null;
+};
+
+export const getSafetyResources = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<SafetyResource[]> => {
+    const { supabase } = context;
+    const { data, error } = await supabase
+      .from("safety_resources")
+      .select("id, name, description, country_code, phone, sms, url, hours")
+      .eq("active", true)
+      .order("priority", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      countryCode: r.country_code,
+      phone: r.phone,
+      sms: r.sms,
+      url: r.url,
+      hours: r.hours,
+    }));
+  });
+
+export const getMyScreeningCompletions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ScreeningCompletion[]> => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("screening_completions")
+      .select("id, instrument, score, range_label, responses, completed_at")
+      .eq("user_id", userId)
+      .order("completed_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      instrument: r.instrument as "PHQ9" | "GAD7",
+      score: r.score,
+      rangeLabel: r.range_label,
+      responses: Array.isArray(r.responses) ? (r.responses as number[]) : [],
+      completedAt: r.completed_at,
+    }));
+  });
+// ---------------------------------------------------------------------------
+// 22b. Report Center — timeframe + timezone logic (README §32-35)
+//
+// All calendar boundaries are computed SERVER-SIDE from the user's IANA
+// timezone. The browser never sends UTC epoch boundaries, and we never compute
+// `Date.now() - 30 * 24 * 60 * 60 * 1000`, which is incorrect around
+// daylight-saving changes. The client only supplies:
+//   1. the timeframe key,
+//   2. the user's IANA timezone name,
+//   3. optional local calendar dates (YYYY-MM-DD) for the custom range,
+// and the server converts those local calendar-days into UTC query boundaries.
+// ---------------------------------------------------------------------------
+
+export type ReportTimeframe = "7d" | "14d" | "30d" | "90d" | "6m" | "12m" | "custom";
+
+export type ReportIncludeSection =
+  | "reset"
+  | "mindChecks"
+  | "habits"
+  | "journal"
+  | "focus"
+  | "xp"
+  | "screenings";
+
+export type GenerateReportInput = {
+  timeframe: ReportTimeframe;
+  timezone?: string | null;
+  /** Local calendar start date (YYYY-MM-DD) — used for "custom" only. */
+  startDate?: string | null;
+  /** Local calendar end date (YYYY-MM-DD) — used for "custom" only. */
+  endDate?: string | null;
+  include: ReportIncludeSection[];
+};
+
+export type ReportPeriod = {
+  timeframe: ReportTimeframe;
+  timezone: string;
+  startDate: string;
+  endDate: string;
+  startUtc: string;
+  endUtc: string;
+};
+
+export type WellnessReport = {
+  period: ReportPeriod;
+  reset?: { completions: number; byDay: AnalyticsDatePoint[] };
+  mindChecks?: { entries: number; wellbeing: AnalyticsWellbeingPoint[] };
+  habits?: { logs: number; byType: AnalyticsCountSlice[] };
+  journal?: { entries: number; byType: AnalyticsCountSlice[] };
+  focus?: { sessions: number; minutes: number; byDay: AnalyticsFocusPoint[] };
+  xp?: { earned: number; bySource: AnalyticsSourceSlice[]; byDay: AnalyticsDatePoint[] };
+  screenings?: {
+    completions: number;
+    byInstrument: { instrument: string; count: number; averageScore: number }[];
+  };
+};
+
+const REPORT_SPANS: Record<Exclude<ReportTimeframe, "custom">, { months: number; days: number }> = {
+  "7d": { months: 0, days: 7 },
+  "14d": { months: 0, days: 14 },
+  "30d": { months: 0, days: 30 },
+  "90d": { months: 0, days: 90 },
+  "6m": { months: 6, days: 0 },
+  "12m": { months: 12, days: 0 },
+};
+
+const REPORT_INCLUDE_SECTIONS: ReportIncludeSection[] = [
+  "reset",
+  "mindChecks",
+  "habits",
+  "journal",
+  "focus",
+  "xp",
+  "screenings",
+];
+
+function isValidTimezone(tz: string): boolean {
+  if (!tz || typeof tz !== "string") return false;
+  try {
+    // Throws a RangeError for unknown time zone identifiers.
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Pure calendar-date arithmetic (UTC-noon anchored) — immune to DST. */
+function shiftCalendarDate(dateKey: string, deltaMonths: number, deltaDays: number): string {
+  const [y = 1970, m = 1, d = 1] = dateKey.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + deltaMonths, d + deltaDays, 12));
+  return dt.toISOString().slice(0, 10);
+}
+
+/**
+ * Convert a user-local calendar date (YYYY-MM-DD) to the UTC instant of local
+ * midnight. We anchor at local noon (every local day in every timezone has a
+ * noon), format that instant back in the user's timezone, then subtract 12h —
+ * this sidesteps DST gaps/overlaps where 00:00 local may be ambiguous.
+ */
+function localDateToUtcStart(dateKey: string, timeZone: string): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) throw new Error("Invalid date.");
+  const anchor = new Date(Date.UTC(y, m - 1, d, 12));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(anchor);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value;
+  const localNoonUtc = Date.UTC(
+    Number(get("year")),
+    Number(get("month")) - 1,
+    Number(get("day")),
+    Number(get("hour")),
+    Number(get("minute")),
+    Number(get("second")),
+  );
+  return new Date(localNoonUtc - 12 * 60 * 60 * 1000).toISOString();
+}
+
+/** Exclusive upper boundary: local midnight at the START of the next day. */
+function localDateToUtcEnd(dateKey: string, timeZone: string): string {
+  return localDateToUtcStart(shiftCalendarDate(dateKey, 0, 1), timeZone);
+}
+
+/** Today's calendar date in the user's IANA timezone (server-computed). */
+function localTodayKey(timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+export const generateWellnessReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: GenerateReportInput) => d)
+  .handler(async ({ context, data }): Promise<WellnessReport> => {
+    const { supabase, userId } = context;
+    const timezone = isValidTimezone(data.timezone ?? "") ? data.timezone! : "UTC";
+
+    // Resolve the local calendar window (DST-safe, entirely server-side).
+    const localToday = localTodayKey(timezone);
+    let startKey: string;
+    let endKey: string;
+    if (data.timeframe === "custom") {
+      startKey = data.startDate ?? localToday;
+      endKey = data.endDate ?? localToday;
+    } else {
+      const span = REPORT_SPANS[data.timeframe] ?? REPORT_SPANS["30d"];
+      startKey = shiftCalendarDate(localToday, -span.months, -span.days);
+      endKey = localToday;
+    }
+    if (endKey < startKey) throw new Error("End date is before start date.");
+    const startUtc = localDateToUtcStart(startKey, timezone);
+    const endUtc = localDateToUtcEnd(endKey, timezone);
+
+    const include = new Set(
+      data.include.filter((s): s is ReportIncludeSection => REPORT_INCLUDE_SECTIONS.includes(s)),
+    );
+    if (include.size === 0) throw new Error("Choose at least one thing to include.");
+
+    const period: ReportPeriod = {
+      timeframe: data.timeframe,
+      timezone,
+      startDate: startKey,
+      endDate: endKey,
+      startUtc,
+      endUtc,
+    };
+    const report: WellnessReport = { period };
+
+    const [resets, mindChecks, habitLogs, habits, journals, focusSessions, xpRows, screenings] =
+      await Promise.all([
+        include.has("reset")
+          ? supabase.from("daily_resets").select("date, completed").eq("user_id", userId).gte("date", startKey).lte("date", endKey)
+          : Promise.resolve({ data: [], error: null }),
+        include.has("mindChecks")
+          ? supabase.from("mind_checks").select("date, mood, energy, focus, stress").eq("user_id", userId).gte("date", startKey).lte("date", endKey)
+          : Promise.resolve({ data: [], error: null }),
+        include.has("habits")
+          ? supabase.from("habit_logs").select("date, habit_id, value").eq("user_id", userId).gte("date", startKey).lte("date", endKey)
+          : Promise.resolve({ data: [], error: null }),
+        include.has("habits")
+          ? supabase.from("wellness_habits").select("id, habit_type").eq("user_id", userId)
+          : Promise.resolve({ data: [], error: null }),
+        include.has("journal")
+          ? supabase.from("journal_entries").select("journal_type, created_at").eq("user_id", userId).gte("created_at", startUtc).lt("created_at", endUtc)
+          : Promise.resolve({ data: [], error: null }),
+        include.has("focus")
+          ? supabase.from("focus_sessions").select("duration_minutes, completed_at, status").eq("user_id", userId).eq("status", "completed").not("completed_at", "is", null).gte("completed_at", startUtc).lt("completed_at", endUtc)
+          : Promise.resolve({ data: [], error: null }),
+        include.has("xp")
+          ? supabase.from("xp_transactions").select("amount, source_type, created_at").eq("user_id", userId).gte("created_at", startUtc).lt("created_at", endUtc)
+          : Promise.resolve({ data: [], error: null }),
+        include.has("screenings")
+          ? supabase.from("screening_completions").select("id, instrument, score, range_label, responses, completed_at").eq("user_id", userId).gte("completed_at", startUtc).lt("completed_at", endUtc)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+    (resets.error || mindChecks.error || habitLogs.error || habits.error || journals.error ||
+      focusSessions.error || xpRows.error || screenings.error) &&
+      (() => { throw new Error("Could not load report data."); })();
+
+    if (include.has("reset")) {
+      const rows: { date: string; completed: boolean }[] = (resets as any)?.data ?? [];
+      const byDayMap = new Map<string, number>();
+      for (const r of rows) if (r.completed) byDayMap.set(r.date, (byDayMap.get(r.date) ?? 0) + 1);
+      report.reset = {
+        completions: rows.filter((r) => r.completed).length,
+        byDay: [...byDayMap.entries()].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    }
+
+    if (include.has("mindChecks")) {
+      const rows: { date: string; mood: number | null; energy: number | null; focus: number | null; stress: number | null }[] = (mindChecks as any)?.data ?? [];
+      report.mindChecks = {
+        entries: rows.length,
+        wellbeing: rows
+          .map((r) => ({ date: r.date, mood: r.mood ?? null, energy: r.energy ?? null, focus: r.focus ?? null, stress: r.stress ?? null }))
+          .sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    }
+
+    if (include.has("habits")) {
+      const oldHabits: { id: string; habit_type: string }[] = (habits as any)?.data ?? [];
+      const typeById = new Map(oldHabits.map((h) => [h.id, h.habit_type]));
+      const logs: { date: string; habit_id: string; value: number }[] = (habitLogs as any)?.data ?? [];
+      const byTypeMap = new Map<string, number>();
+      for (const l of logs) {
+        const t = typeById.get(l.habit_id) ?? "other";
+        byTypeMap.set(t, (byTypeMap.get(t) ?? 0) + 1);
+      }
+      report.habits = {
+        logs: logs.length,
+        byType: [...byTypeMap.entries()].map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count),
+      };
+    }
+
+    if (include.has("journal")) {
+      const rows: { journal_type: string; created_at: string }[] = (journals as any)?.data ?? [];
+      const byTypeMap = new Map<string, number>();
+      for (const r of rows) {
+        const t = r.journal_type || "other";
+        byTypeMap.set(t, (byTypeMap.get(t) ?? 0) + 1);
+      }
+      report.journal = {
+        entries: rows.length,
+        byType: [...byTypeMap.entries()].map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count),
+      };
+    }
+
+    if (include.has("focus")) {
+      const rows: { duration_minutes: number; completed_at: string }[] = (focusSessions as any)?.data ?? [];
+      const byDayMap = new Map<string, { minutes: number; sessions: number }>();
+      let minutes = 0;
+      for (const r of rows) {
+        const day = (r.completed_at ?? "").slice(0, 10);
+        const cur = byDayMap.get(day) ?? { minutes: 0, sessions: 0 };
+        cur.minutes += r.duration_minutes ?? 0;
+        cur.sessions += 1;
+        byDayMap.set(day, cur);
+        minutes += r.duration_minutes ?? 0;
+      }
+      report.focus = {
+        sessions: rows.length,
+        minutes,
+        byDay: [...byDayMap.entries()].map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    }
+
+    if (include.has("xp")) {
+      const rows: { amount: number; source_type: string; created_at: string }[] = (xpRows as any)?.data ?? [];
+      const byDayMap = new Map<string, number>();
+      const bySrcMap = new Map<string, { value: number; count: number }>();
+      let earned = 0;
+      for (const r of rows) {
+        const day = (r.created_at ?? "").slice(0, 10);
+        const amt = r.amount ?? 0;
+        earned += amt;
+        byDayMap.set(day, (byDayMap.get(day) ?? 0) + amt);
+        const src = r.source_type || "other";
+        const cur = bySrcMap.get(src) ?? { value: 0, count: 0 };
+        cur.value += amt;
+        cur.count += 1;
+        bySrcMap.set(src, cur);
+      }
+      report.xp = {
+        earned,
+        bySource: [...bySrcMap.entries()].map(([source, v]) => ({ source, value: v.value, count: v.count })).sort((a, b) => b.value - a.value),
+        byDay: [...byDayMap.entries()].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    }
+
+    if (include.has("screenings")) {
+      const rows: { instrument: "PHQ9" | "GAD7"; score: number }[] = (screenings as any)?.data ?? [];
+      const byInstrumentMap = new Map<string, { count: number; totalScore: number }>();
+      for (const r of rows) {
+        const cur = byInstrumentMap.get(r.instrument) ?? { count: 0, totalScore: 0 };
+        cur.count += 1;
+        cur.totalScore += r.score;
+        byInstrumentMap.set(r.instrument, cur);
+      }
+      report.screenings = {
+        completions: rows.length,
+        byInstrument: [...byInstrumentMap.entries()].map(([instrument, v]) => ({
+          instrument,
+          count: v.count,
+          averageScore: v.count ? Math.round((v.totalScore / v.count) * 10) / 10 : 0,
+        })),
+      };
+    }
+
+    return report;
+  });
 // ---------------------------------------------------------------------------
 // 23. Rewards marketplace (catalog, spendable XP balance, redeem, equip)
 // ---------------------------------------------------------------------------

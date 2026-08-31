@@ -32,6 +32,8 @@ import {
   getMyGoals,
   addMyGoal,
   completeMyGoal,
+  getMyScreeningCompletions,
+  getSafetyResources,
 } from "@/lib/server-functions";
 import type { NumiMessage, UserSettings, RewardsMarketplace, UpdateProfileInput } from "@/lib/server-functions";
 
@@ -199,5 +201,13 @@ export function useCompleteMyGoal() {
     mutationFn: (id: string) => completeMyGoal({ data: { id } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["myGoals"] }),
   });
+}
+
+export function useMyScreeningCompletions() {
+  return useQuery({ queryKey: ["myScreeningCompletions"], queryFn: () => getMyScreeningCompletions() });
+}
+
+export function useSafetyResources() {
+  return useQuery({ queryKey: ["safetyResources"], queryFn: () => getSafetyResources() });
 }
 

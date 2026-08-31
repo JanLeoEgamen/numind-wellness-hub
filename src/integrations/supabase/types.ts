@@ -1481,6 +1481,36 @@ export type Database = {
         }
         Relationships: []
       }
+screening_completions: {
+        Row: {
+          completed_at: string
+          id: string
+          instrument: string
+          range_label: string
+          responses: Json
+          score: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          instrument: string
+          range_label: string
+          responses?: Json
+          score: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          instrument?: string
+          range_label?: string
+          responses?: Json
+          score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           billing_period: string
