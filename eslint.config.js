@@ -8,6 +8,13 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   { ignores: ["dist", ".output", ".vinxi"] },
   {
+    // The service worker in public/ is plain JavaScript and runs in a
+    // ServiceWorkerGlobalScope, so it needs `self`, `caches`, `clients`, ...
+    // instead of the browser globals below.
+    files: ["public/**/*.js"],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
     languageOptions: {

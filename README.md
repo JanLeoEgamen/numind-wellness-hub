@@ -571,6 +571,14 @@ Do not hard-code the architecture around these prices.
 
 The UI should make pricing configurable later.
 
+Section: Install the app
+
+Install NuMind in one tap from the browser — it opens full screen and works offline.
+
+Use the browser's native install prompt where it exists, and Add to Home Screen steps on iOS.
+
+No app store listings, nothing to download.
+
 Section: FAQ
 
 Create a polished accordion.
@@ -596,6 +604,8 @@ Terms
 Safety
 
 Contact
+
+Install app
 
 10. ONBOARDING
 

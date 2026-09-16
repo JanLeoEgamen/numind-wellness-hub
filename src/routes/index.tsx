@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { FAQS, GARDEN_STAGES, PLANS, PLAY_ACTIVITIES } from "@/lib/mock-data";
 import { SiteLayout, PricingCards } from "@/components/layout/SiteChrome";
+import { InstallAppSection } from "@/components/numind/install-app";
 import { NumiAvatar, SoftCard, ToneIcon } from "@/components/numind/ui-kit";
 import { Icon } from "@/components/numind/icon";
 
@@ -202,6 +203,8 @@ function Landing() {
         <p className="mt-2 text-muted-foreground">Monthly shown — annual plans save around 25%.</p>
         <div className="mt-8"><PricingCards plans={PLANS} /></div>
       </section>
+
+      <InstallAppSection />
 
       <section className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
         <h2 className="text-3xl font-bold">Questions</h2>

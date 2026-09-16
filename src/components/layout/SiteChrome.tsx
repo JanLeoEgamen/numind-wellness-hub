@@ -71,6 +71,13 @@ function SiteLayoutInner({ children }: { children: ReactNode }) {
               NuMind
             </p>
             <p className="mt-1 text-sm text-muted-foreground">Reset • Focus • Grow</p>
+            <Link
+              to="/"
+              hash="install"
+              className="focus-ring mt-4 inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-semibold text-background dark:bg-surface dark:text-foreground"
+            >
+              <Icon symbol="Smartphone" size={12} /> Install app
+            </Link>
           </div>
           <div>
             <p className="text-sm font-bold">Product</p>
