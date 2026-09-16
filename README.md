@@ -68,8 +68,6 @@ Feature cards
 
 Landing page
 
-App-store CTAs
-
 Marketing sections
 
 Navigation
@@ -438,10 +436,6 @@ Wellness Garden
 
 Soft botanical background
 
-App Store badge
-
-Google Play badge
-
 The hero should immediately communicate that NuMind is a premium consumer wellness product.
 
 9. LANDING PAGE SECTIONS
@@ -602,10 +596,6 @@ Terms
 Safety
 
 Contact
-
-App Store
-
-Google Play
 
 10. ONBOARDING
 

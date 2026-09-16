@@ -48,12 +48,6 @@ function Landing() {
               <Link to="/signup" className="focus-ring rounded-full bg-brand px-7 py-3.5 text-base font-bold text-navy shadow-glow">Get started free</Link>
               <Link to="/app" className="focus-ring rounded-full border border-border bg-surface px-7 py-3.5 text-base font-semibold">Explore NuMind</Link>
             </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <span className="rounded-xl bg-navy px-4 py-2.5 text-xs font-semibold text-background dark:bg-surface dark:text-foreground"> Download on the App Store</span>
-              <span className="rounded-xl bg-navy px-4 py-2.5 text-xs font-semibold text-background dark:bg-surface dark:text-foreground">
-                <Icon symbol="Play" size={12} className="mr-1 inline-block" /> Get it on Google Play
-              </span>
-            </div>
           </div>
           <div className="relative grid place-items-center">
             <div className="animate-float w-[280px] rounded-[2.5rem] border-8 border-navy bg-background p-4 shadow-lift dark:border-surface-2">
