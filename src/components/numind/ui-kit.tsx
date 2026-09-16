@@ -62,7 +62,14 @@ export function ProgressRing({
       aria-label={label ?? `${Math.round(pct * 100)} percent complete`}
     >
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-muted)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="var(--color-muted)"
+          strokeWidth={stroke}
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -110,7 +117,10 @@ export function ProgressBar({
       aria-valuemax={100}
     >
       <div
-        className={cn("h-full rounded-full transition-[width] duration-700 ease-out", toneMap[tone])}
+        className={cn(
+          "h-full rounded-full transition-[width] duration-700 ease-out",
+          toneMap[tone],
+        )}
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -119,21 +129,34 @@ export function ProgressBar({
 
 /* ---------------- Numi ---------------- */
 
+/**
+ * Numi artwork lives in `public/`. `numi-avatar.png` is the 1254px master; the
+ * `-128 / -256 / -512` copies are derivatives cropped to the artwork's own
+ * circular frame (1182x1182 at x=32,y=29 in the master) and re-encoded, so the
+ * round mask below lands exactly on the ring with no white bleed. A `srcSet`
+ * keeps the heaviest download at ~75 KB instead of 1.6 MB — the master is
+ * deliberately not a candidate because the largest placement is 150px.
+ */
+const NUMI_AVATAR = "/numi-avatar";
+
 export function NumiAvatar({ size = 64, className }: { size?: number; className?: string }) {
   return (
     <div
-      className={cn("relative grid shrink-0 place-items-center rounded-full bg-brand shadow-glow", className)}
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-full bg-surface shadow-glow",
+        className,
+      )}
       style={{ width: size, height: size }}
       aria-hidden
     >
-      <div className="absolute inset-[10%] rounded-full bg-surface/85" />
-      <div className="relative flex items-center gap-[14%]">
-        <span className="block rounded-full bg-navy dark:bg-foreground" style={{ width: size * 0.11, height: size * 0.16 }} />
-        <span className="block rounded-full bg-navy dark:bg-foreground" style={{ width: size * 0.11, height: size * 0.16 }} />
-      </div>
-      <div
-        className="absolute rounded-full border-b-2 border-teal"
-        style={{ width: size * 0.3, height: size * 0.14, bottom: size * 0.26 }}
+      <img
+        src={`${NUMI_AVATAR}-512.jpg`}
+        srcSet={`${NUMI_AVATAR}-128.jpg 128w, ${NUMI_AVATAR}-256.jpg 256w, ${NUMI_AVATAR}-512.jpg 512w`}
+        sizes={`${size}px`}
+        alt=""
+        draggable={false}
+        decoding="async"
+        className="h-full w-full object-cover"
       />
     </div>
   );
@@ -168,11 +191,13 @@ export function ToneIcon({
   tone?: keyof typeof TONE_BG | string;
   size?: "sm" | "md" | "lg";
 }) {
-  const box =
-    size === "lg" ? "h-16 w-16" : size === "sm" ? "h-9 w-9" : "h-12 w-12";
+  const box = size === "lg" ? "h-16 w-16" : size === "sm" ? "h-9 w-9" : "h-12 w-12";
   const iconSize = size === "lg" ? 32 : size === "sm" ? 18 : 24;
   return (
-    <span aria-hidden className={cn("grid place-items-center rounded-2xl", TONE_BG[tone] ?? "bg-teal/15", box)}>
+    <span
+      aria-hidden
+      className={cn("grid place-items-center rounded-2xl", TONE_BG[tone] ?? "bg-teal/15", box)}
+    >
       <Icon symbol={emoji} size={iconSize} className={TONE_TEXT[tone] ?? "text-teal"} />
     </span>
   );
@@ -188,7 +213,9 @@ export function SoftCard({
   interactive?: boolean;
 }) {
   return (
-    <div className={cn("card-soft p-5 sm:p-6", interactive && "hover-lift", className)}>{children}</div>
+    <div className={cn("card-soft p-5 sm:p-6", interactive && "hover-lift", className)}>
+      {children}
+    </div>
   );
 }
 
@@ -208,11 +235,17 @@ export function PageHeader({
       <div>
         <h1 className="text-2xl font-bold sm:text-3xl">
           {emoji ? (
-            <Icon symbol={emoji} size={28} className="mr-2 inline-block -translate-y-0.5 align-middle" />
+            <Icon
+              symbol={emoji}
+              size={28}
+              className="mr-2 inline-block -translate-y-0.5 align-middle"
+            />
           ) : null}
           {title}
         </h1>
-        {subtitle ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</p> : null}
+        {subtitle ? (
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</p>
+        ) : null}
       </div>
       {action}
     </header>
@@ -268,7 +301,10 @@ export function ErrorState({ onRetry }: { onRetry?: () => void }) {
       <h3 className="text-lg font-bold">That didn't load</h3>
       <p className="text-sm text-muted-foreground">No worries — let's try that again.</p>
       {onRetry ? (
-        <button onClick={onRetry} className="focus-ring rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">
+        <button
+          onClick={onRetry}
+          className="focus-ring rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground"
+        >
           Try again
         </button>
       ) : null}
@@ -291,7 +327,13 @@ export function DisclaimerNote({ children }: { children: ReactNode }) {
 }
 
 export function Confetti({ count = 60 }: { count?: number }) {
-  const colors = ["var(--color-teal)", "var(--color-lavender)", "var(--color-sun)", "var(--color-coral)", "var(--color-mint)"];
+  const colors = [
+    "var(--color-teal)",
+    "var(--color-lavender)",
+    "var(--color-sun)",
+    "var(--color-coral)",
+    "var(--color-mint)",
+  ];
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" aria-hidden>
       {Array.from({ length: count }).map((_, i) => (
@@ -301,7 +343,7 @@ export function Confetti({ count = 60 }: { count?: number }) {
           style={{
             left: `${(i * 37) % 100}%`,
             background: colors[i % colors.length],
-            animation: `numind-confetti ${1.8 + ((i % 7) * 0.22)}s linear ${(i % 11) * 0.11}s forwards`,
+            animation: `numind-confetti ${1.8 + (i % 7) * 0.22}s linear ${(i % 11) * 0.11}s forwards`,
           }}
         />
       ))}
