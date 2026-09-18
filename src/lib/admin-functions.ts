@@ -328,6 +328,85 @@ export const adminSetSubscriptionStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export type AdminPlanListItem = {
+  id: string;
+  slug: string;
+  name: string;
+  price_monthly_cents: number;
+  price_annual_cents: number;
+  active: boolean;
+  sort_order: number;
+};
+
+export const adminListPlans = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth, requireAdmin])
+  .handler(async ({ context }): Promise<AdminPlanListItem[]> => {
+    const { supabase } = context;
+    const { data, error } = await supabase
+      .from("subscription_plans")
+      .select("id, slug, name, price_monthly_cents, price_annual_cents, active, sort_order")
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as AdminPlanListItem[];
+  });
+
+export type AdminSetSubscriptionInput = {
+  userId: string;
+  planSlug: string;
+  billingPeriod?: "monthly" | "annual";
+  periodEnd?: string | null;
+};
+
+export const adminSetSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth, requireAdmin])
+  .validator((d: AdminSetSubscriptionInput) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    const nowIso = new Date().toISOString();
+    const billing = data.billingPeriod === "annual" ? "annual" : "monthly";
+
+    // Resolve the target plan (slug is the stable identifier).
+    const { data: plan, error: planErr } = await supabase
+      .from("subscription_plans")
+      .select("id, slug, name, price_monthly_cents")
+      .eq("slug", data.planSlug)
+      .eq("active", true)
+      .maybeSingle();
+    if (planErr) throw new Error(planErr.message);
+    if (!plan) throw new Error("That plan isn't available right now.");
+
+    // End the user's current plan so the swap is atomic (one active row each).
+    const { error: endErr } = await supabase
+      .from("subscriptions")
+      .update({ status: "canceled", canceled_at: nowIso })
+      .eq("user_id", data.userId)
+      .in("status", ["active", "trialing"]);
+    if (endErr) throw new Error(endErr.message);
+
+    // Free is the anchor plan: no billing period to track. Paid plans carry a
+    // renew window; admins may override it (extend/limit/expire sessions).
+    let periodEnd: string | null =
+      data.periodEnd && data.periodEnd.trim() ? data.periodEnd : null;
+    if (plan.slug !== "free" && !periodEnd) {
+      const end = new Date();
+      if (billing === "annual") end.setFullYear(end.getFullYear() + 1);
+      else end.setMonth(end.getMonth() + 1);
+      periodEnd = end.toISOString();
+    }
+
+    const { error: insertErr } = await supabase.from("subscriptions").insert({
+      user_id: data.userId,
+      plan_id: plan.id,
+      status: "active",
+      billing_period: billing,
+      started_at: nowIso,
+      current_period_end: periodEnd,
+    });
+    if (insertErr) throw new Error(insertErr.message);
+    return { ok: true };
+  });
+
+
 // ---------------------------------------------------------------------------
 // Together moderation
 // ---------------------------------------------------------------------------

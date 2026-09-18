@@ -12,10 +12,12 @@ import {
   useAdminDeleteCatalog,
   useAdminDeletePost,
   useAdminModeration,
+  useAdminPlans,
   useAdminRecentXp,
   useAdminRemoveUserRole,
   useAdminSetCatalogActive,
   useAdminSetPostHidden,
+  useAdminSetSubscription,
   useAdminSetSubscriptionStatus,
   useAdminSetUserRole,
   useAdminSubscriptions,
@@ -23,7 +25,7 @@ import {
   useAdminUserDetail,
   useAdminUsers,
 } from "@/lib/admin-data";
-import type { AdminUserRow, CatalogTable } from "@/lib/admin-functions";
+import type { AdminSubscriptionRow, AdminUserRow, CatalogTable } from "@/lib/admin-functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -531,9 +533,32 @@ function UserDetailCard({ user, onClose }: { user: AdminUserRow | null; onClose:
 // ---------------------------------------------------------------------------
 // Subscriptions
 // ---------------------------------------------------------------------------
+
+function toDateInputValue(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
 function SubscriptionsPanel() {
   const { data, isLoading, error } = useAdminSubscriptions();
+  const plansQuery = useAdminPlans();
+  const usersQuery = useAdminUsers();
   const setStatus = useAdminSetSubscriptionStatus();
+  const setSub = useAdminSetSubscription();
+
+  // Per-row manual override draft keyed by subscription id.
+  const [drafts, setDrafts] = useState<Record<string, { planSlug: string; billingPeriod: string; periodEnd: string }>>({});
+
+  // "Assign a plan" form state.
+  const [assignId, setAssignId] = useState("");
+  const [assignPlan, setAssignPlan] = useState("");
+  const [assignBilling, setAssignBilling] = useState("monthly");
+  const [assignEnd, setAssignEnd] = useState("");
+
+  const plans = plansQuery.data ?? [];
+  const users = usersQuery.data ?? [];
 
   const updateStatus = (id: string, status: string) =>
     setStatus.mutate(
@@ -541,59 +566,231 @@ function SubscriptionsPanel() {
       { onSuccess: () => toast.success("Subscription updated"), onError: (e) => toast.error(e.message) },
     );
 
+  // Default a fresh draft to the row's current values.
+  const draftFor = (s: AdminSubscriptionRow): { planSlug: string; billingPeriod: string; periodEnd: string } =>
+    drafts[s.id] ?? {
+      planSlug: s.plan_slug ?? plans[0]?.slug ?? "free",
+      billingPeriod: s.billing_period ?? "monthly",
+      periodEnd: toDateInputValue(s.current_period_end),
+    };
+
+  const setDraft = (id: string, patch: Partial<{ planSlug: string; billingPeriod: string; periodEnd: string }>) => {
+    const row = data?.find((x) => x.id === id);
+    const base = row ? draftFor(row) : { planSlug: plans[0]?.slug ?? "free", billingPeriod: "monthly", periodEnd: "" };
+    setDrafts((d) => ({ ...d, [id]: { ...base, ...patch } }));
+  };
+
+  const applyOverride = (s: AdminSubscriptionRow) => {
+    const draft = draftFor(s);
+    setSub.mutate(
+      {
+        userId: s.user_id,
+        planSlug: draft.planSlug,
+        billingPeriod: draft.billingPeriod as "monthly" | "annual",
+        periodEnd: draft.periodEnd ? new Date(`${draft.periodEnd}T00:00:00`).toISOString() : null,
+      },
+      {
+        onSuccess: () =>
+          toast.success(
+            `${s.nickname ?? s.firstName ?? "Member"} switched to ${plans.find((p) => p.slug === draft.planSlug)?.name ?? draft.planSlug}`,
+          ),
+        onError: (e) => toast.error(e.message),
+      },
+    );
+  };
+
+  const assign = () => {
+    if (!assignId || !assignPlan) {
+      toast.error("Choose a user and a plan to assign.");
+      return;
+    }
+    setSub.mutate(
+      {
+        userId: assignId,
+        planSlug: assignPlan,
+        billingPeriod: assignBilling as "monthly" | "annual",
+        periodEnd: assignEnd ? new Date(`${assignEnd}T00:00:00`).toISOString() : null,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Subscription assigned.");
+          setAssignId("");
+          setAssignEnd("");
+        },
+        onError: (e) => toast.error(e.message),
+      },
+    );
+  };
+
   if (isLoading) return <LoadingNote />;
   if (error || !data) return <ErrorNote error={error} />;
-  if (data.length === 0) return <EmptyState message="No subscriptions yet." />;
 
   return (
-    <div className="card-soft overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="text-xs uppercase text-muted-foreground">
-          <tr>
-            <th className="p-3">User</th>
-            <th className="p-3">Plan</th>
-            <th className="p-3">Billing</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Started</th>
-            <th className="p-3">Renews</th>
-            <th className="p-3" />
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((s) => (
-            <tr key={s.id} className="border-t border-border">
-              <td className="p-3 font-medium">{s.nickname ?? s.firstName ?? "Member"}</td>
-              <td className="p-3">
-                {s.plan_name ?? "—"}
-                {s.price_monthly_cents ? <span className="ml-1 text-xs text-muted-foreground">(${(s.price_monthly_cents / 100).toFixed(2)}/mo)</span> : null}
-              </td>
-              <td className="p-3 capitalize text-muted-foreground">{s.billing_period}</td>
-              <td className="p-3">
-                <Pill tone={s.status === "active" || s.status === "trialing" ? "mint" : s.status === "canceled" || s.status === "expired" ? "destructive" : "sun"}>
-                  {s.status}
-                </Pill>
-              </td>
-              <td className="p-3 text-muted-foreground">{fmtDate(s.started_at)}</td>
-              <td className="p-3 text-muted-foreground">{fmtDate(s.current_period_end)}</td>
-              <td className="p-3">
-                <select
-                  value={s.status}
-                  onChange={(e) => updateStatus(s.id, e.target.value)}
-                  aria-label="Subscription status"
-                  className="focus-ring rounded-full border border-border bg-card px-2 py-1 text-xs"
-                >
-                  {["active", "trialing", "past_due", "canceled", "expired"].map((st) => (
-                    <option key={st}>{st}</option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid gap-4">
+      {/* Assign a plan to a user */}
+      <div className="card-soft p-5">
+        <h2 className="text-sm font-bold">Assign a plan</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Grant or change a user&apos;s plan manually. This applies immediately — the user&apos;s plan is the basis for feature access.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            User
+            <select
+              value={assignId}
+              onChange={(e) => setAssignId(e.target.value)}
+              className="focus-ring rounded-xl border border-border bg-card px-3 py-2 text-sm"
+            >
+              <option value="">Select a user…</option>
+              {users.map((u) => (
+                <option key={u.user_id} value={u.user_id}>
+                  {u.email}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            Plan
+            <select
+              value={assignPlan}
+              onChange={(e) => setAssignPlan(e.target.value)}
+              className="focus-ring rounded-xl border border-border bg-card px-3 py-2 text-sm"
+            >
+              <option value="">Select…</option>
+              {plans.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            Billing
+            <select value={assignBilling} onChange={(e) => setAssignBilling(e.target.value)} className="focus-ring rounded-xl border border-border bg-card px-3 py-2 text-sm">
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            Renews on (optional)
+            <input
+              type="date"
+              value={assignEnd}
+              onChange={(e) => setAssignEnd(e.target.value)}
+              className="focus-ring rounded-xl border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <button onClick={assign} disabled={setSub.isPending} className="focus-ring rounded-full bg-brand px-5 py-2 text-sm font-bold text-navy disabled:opacity-50">
+            {setSub.isPending ? "Assigning…" : "Assign plan"}
+          </button>
+          {plans.find((p) => p.slug === assignPlan) ? (
+            <span className="text-xs text-muted-foreground">{plans.find((p) => p.slug === assignPlan)?.name}</span>
+          ) : null}
+        </div>
+      </div>
+
+
+      {data.length === 0 ? (
+        <EmptyState message="No subscriptions yet. Use “Assign a plan” above to add one." />
+      ) : (
+        <div className="card-soft overflow-x-auto">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-3">User</th>
+                <th className="p-3">Plan</th>
+                <th className="p-3">Billing</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Started</th>
+                <th className="p-3">Renews</th>
+                <th className="p-3">Manual override</th>
+                <th className="p-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((s) => {
+                const draft = draftFor(s);
+                return (
+                  <tr key={s.id} className="border-t border-border align-top">
+                    <td className="p-3 font-medium">{s.nickname ?? s.firstName ?? "Member"}</td>
+                    <td className="p-3">
+                      {s.plan_name ?? "—"}
+                      {s.price_monthly_cents ? <span className="ml-1 text-xs text-muted-foreground">(${(s.price_monthly_cents / 100).toFixed(2)}/mo)</span> : null}
+                    </td>
+                    <td className="p-3 capitalize text-muted-foreground">{s.billing_period}</td>
+                    <td className="p-3">
+                      <Pill tone={s.status === "active" || s.status === "trialing" ? "mint" : s.status === "canceled" || s.status === "expired" ? "destructive" : "sun"}>
+                        {s.status}
+                      </Pill>
+                    </td>
+                    <td className="p-3 text-muted-foreground">{fmtDate(s.started_at)}</td>
+                    <td className="p-3 text-muted-foreground">{fmtDate(s.current_period_end)}</td>
+                    <td className="p-3">
+                      <div className="grid gap-2">
+                        <select
+                          value={draft.planSlug}
+                          onChange={(e) => setDraft(s.id, { planSlug: e.target.value })}
+                          aria-label="Override plan"
+                          className="focus-ring rounded-full border border-border bg-card px-2 py-1 text-xs"
+                        >
+                          {plans.map((p) => (
+                            <option key={p.slug} value={p.slug}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={draft.billingPeriod}
+                          onChange={(e) => setDraft(s.id, { billingPeriod: e.target.value })}
+                          aria-label="Override billing period"
+                          className="focus-ring rounded-full border border-border bg-card px-2 py-1 text-xs"
+                        >
+                          <option value="monthly">Monthly</option>
+                          <option value="annual">Annual</option>
+                        </select>
+                        <input
+                          type="date"
+                          value={draft.periodEnd}
+                          onChange={(e) => setDraft(s.id, { periodEnd: e.target.value })}
+                          aria-label="Override renew date"
+                          className="focus-ring rounded-full border border-border bg-card px-2 py-1 text-xs"
+                        />
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="grid gap-2">
+                        <button
+                          onClick={() => applyOverride(s)}
+                          disabled={setSub.isPending}
+                          className="focus-ring rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-navy disabled:opacity-50"
+                        >
+                          Apply
+                        </button>
+                        <select
+                          value={s.status}
+                          onChange={(e) => updateStatus(s.id, e.target.value)}
+                          aria-label="Subscription status"
+                          className="focus-ring rounded-full border border-border bg-card px-2 py-1 text-xs"
+                        >
+                          {["active", "trialing", "past_due", "canceled", "expired"].map((st) => (
+                            <option key={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Together moderation

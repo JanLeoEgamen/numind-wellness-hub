@@ -7,16 +7,19 @@ import {
   adminGetUserDetail,
   adminListAllPosts,
   adminListCatalog,
+  adminListPlans,
   adminListSubscriptions,
   adminListUsers,
   adminRecentXp,
   adminRemoveUserRole,
   adminSetCatalogActive,
   adminSetPostHidden,
+  adminSetSubscription,
   adminSetSubscriptionStatus,
   adminSetUserRole,
   adminUpsertCatalog,
   getAdminDashboard,
+  type AdminSetSubscriptionInput,
   type CatalogTable,
 } from "@/lib/admin-functions";
 
@@ -42,6 +45,7 @@ export const ADMIN_KEYS = {
   dashboard: ["admin", "dashboard"] as const,
   users: ["admin", "users"] as const,
   subscriptions: ["admin", "subscriptions"] as const,
+  plans: ["admin", "plans"] as const,
   moderation: ["admin", "moderation"] as const,
   xp: ["admin", "xp"] as const,
   catalog: (table: CatalogTable) => ["admin", "catalog", table] as const,
@@ -66,6 +70,10 @@ export function useAdminUserDetail(userId: string | null) {
 
 export function useAdminSubscriptions() {
   return useQuery({ queryKey: ADMIN_KEYS.subscriptions, queryFn: () => withTimeout(adminListSubscriptions()), retry: ADMIN_QUERY_RETRY });
+}
+
+export function useAdminPlans() {
+  return useQuery({ queryKey: ADMIN_KEYS.plans, queryFn: () => withTimeout(adminListPlans()), retry: ADMIN_QUERY_RETRY });
 }
 
 export function useAdminModeration() {
@@ -139,6 +147,20 @@ export function useAdminSetSubscriptionStatus() {
     mutationFn: (d: { id: string; status: "trialing" | "active" | "past_due" | "canceled" | "expired" }) =>
       withTimeout(adminSetSubscriptionStatus({ data: d })),
     onSuccess: () => invalidate(ADMIN_KEYS.subscriptions),
+  });
+}
+
+export function useAdminSetSubscription() {
+  const { invalidate } = useAdminInvalidator();
+  return useMutation({
+    mutationFn: (d: AdminSetSubscriptionInput) =>
+      withTimeout(adminSetSubscription({ data: d })),
+    onSuccess: () => {
+      // A plan change alters the active-sub counts on the dashboard too.
+      invalidate(ADMIN_KEYS.subscriptions);
+      invalidate(ADMIN_KEYS.dashboard);
+      invalidate(ADMIN_KEYS.users);
+    },
   });
 }
 
