@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MIND_GYM_ACTIVITIES, MIND_GYM_CATEGORIES } from "@/lib/mock-data";
 import { useNuMind } from "@/lib/numind-store";
@@ -139,28 +139,38 @@ function MindGym() {
                     <span className="rounded-full bg-muted px-2 py-1">⏱ {a.minutes} min</span>
                     <span className="rounded-full bg-muted px-2 py-1">{a.difficulty}</span>
                   </div>
+                  {a.locked ? (
+                  <Link
+                    to="/pricing"
+                    className="focus-ring mt-4 block w-full rounded-full bg-brand px-4 py-2.5 text-center text-sm font-bold text-navy"
+                  >
+                    Upgrade for NuMind+
+                  </Link>
+                  ) : done ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setStarted(false);
+                        setStep(0);
+                        setActive(a.id);
+                      }}
+                      className="focus-ring mt-4 w-full rounded-full bg-mint/40 px-4 py-2.5 text-sm font-bold text-foreground transition"
+                    >
+                      <Icon symbol="Check" size={13} className="mr-1 inline-block align-[-1px]" /> Completed · Do it again
+                    </button>
+                  </>
+                ) : (
                   <button
-                    disabled={a.locked}
                     onClick={() => {
                       setStarted(false);
                       setStep(0);
                       setActive(a.id);
                     }}
-                    className={cn(
-                      "focus-ring mt-4 w-full rounded-full px-4 py-2.5 text-sm font-bold transition",
-                      done
-                        ? "bg-mint/40 text-foreground"
-                        : a.locked
-                          ? "cursor-not-allowed bg-muted text-muted-foreground"
-                          : "bg-brand text-navy hover:brightness-105",
-                    )}
+                    className="focus-ring mt-4 w-full rounded-full bg-brand px-4 py-2.5 text-sm font-bold text-navy hover:brightness-105"
                   >
-                    {a.locked ? "Unlock with NuMind+" : done ? (
-                  <>
-                    <Icon symbol="Check" size={13} className="mr-1 inline-block align-[-1px]" /> Completed · Do it again
-                  </>
-                ) : "Start"}
+                    Start
                   </button>
+                )}
                 </SoftCard>
               </li>
             );

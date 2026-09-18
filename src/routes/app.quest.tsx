@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUESTS } from "@/lib/mock-data";
 import { useNuMind } from "@/lib/numind-store";
 import { completeQuest } from "@/lib/server-functions";
-import { useMyQuests, isUuid } from "@/lib/server-data";
+import { useMyQuests, useMySubscription, isUuid } from "@/lib/server-data";
 import { PageHeader, SoftCard, ProgressBar, XPBadge, ToneIcon } from "@/components/numind/ui-kit";
 import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,11 @@ function QuestPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("daily");
   const { completeTask, isComplete, celebrate } = useNuMind();
   const queryClient = useQueryClient();
+  const mySub = useMySubscription();
   const { data: srvQuests } = useMyQuests();
+  // Weekly, monthly and seasonal challenges are premium (priced) content.
+  const isPremium = Boolean(mySub.data?.isPremium);
+  const premiumTab = !isPremium && tab !== "daily";
   // Prefer the server-catalogued quests for this tab; fall back to mock data.
   const srvList = (srvQuests ?? []).filter((q) => q.questType === tab);
   const list = srvList.length ? srvList : QUESTS[tab];
@@ -104,51 +108,72 @@ function QuestPage() {
         ))}
       </div>
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {list.map((q) => {
-          const done = isQuestDone(q);
-          return (
-            <li key={q.id}>
-              <SoftCard className="flex h-full flex-col">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <ToneIcon emoji={q.emoji ?? "Trophy"} tone={done ? "mint" : "lavender"} />
-                    <div>
-                      <p className="font-semibold">{q.name}</p>
-                      <p className="text-sm text-muted-foreground">{q.desc}</p>
+      {premiumTab ? (
+        <SoftCard className="bg-hero px-6 py-10 text-center">
+          <p className="text-5xl" aria-hidden>
+            <Icon symbol="Trophy" size={48} />
+          </p>
+          <h3 className="mt-3 text-lg font-bold">
+            {tab === "weekly" ? "Weekly challenges" : tab === "monthly" ? "Monthly adventures" : "Seasonal challenges"}{" "}
+            are part of NuMind Plus
+          </h3>
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            Upgrade to unlock bigger missions, bigger XP and the seasonal challenge track.
+          </p>
+          <Link
+            to="/pricing"
+            className="focus-ring mt-5 inline-block rounded-full bg-brand px-6 py-3 text-sm font-bold text-navy"
+          >
+            See plans
+          </Link>
+        </SoftCard>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {list.map((q) => {
+            const done = isQuestDone(q);
+            return (
+              <li key={q.id}>
+                <SoftCard className="flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <ToneIcon emoji={q.emoji ?? "Trophy"} tone={done ? "mint" : "lavender"} />
+                      <div>
+                        <p className="font-semibold">{q.name}</p>
+                        <p className="text-sm text-muted-foreground">{q.desc}</p>
+                      </div>
                     </div>
+                    <XPBadge xp={q.xp} />
                   </div>
-                  <XPBadge xp={q.xp} />
-                </div>
-                <div className="mt-4">
-                  <ProgressBar
-                    tone={done ? "mint" : "teal"}
-                    value={done ? q.goal : q.progress}
-                    max={q.goal}
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {done ? q.goal : q.progress} / {q.goal}
-                  </p>
-                </div>
-                <button
-                  disabled={done}
-                  onClick={() => handleComplete(q)}
-                  className={cn(
-                    "focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold transition",
-                    done ? "bg-mint/40 text-foreground" : "bg-brand text-navy hover:brightness-105",
-                  )}
-                >
-                  {done ? (
-                  <>
-                    <Icon symbol="Check" size={14} className="mr-1 inline-block align-[-1px]" /> Complete
-                  </>
-                ) : "Mark complete"}
-                </button>
-              </SoftCard>
-            </li>
-          );
-        })}
-      </ul>
+                  <div className="mt-4">
+                    <ProgressBar
+                      tone={done ? "mint" : "teal"}
+                      value={done ? q.goal : q.progress}
+                      max={q.goal}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {done ? q.goal : q.progress} / {q.goal}
+                    </p>
+                  </div>
+                  <button
+                    disabled={done}
+                    onClick={() => handleComplete(q)}
+                    className={cn(
+                      "focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold transition",
+                      done ? "bg-mint/40 text-foreground" : "bg-brand text-navy hover:brightness-105",
+                    )}
+                  >
+                    {done ? (
+                      <>
+                        <Icon symbol="Check" size={14} className="mr-1 inline-block align-[-1px]" /> Complete
+                      </>
+                    ) : "Mark complete"}
+                  </button>
+                </SoftCard>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <SoftCard className="mt-6 bg-hero text-center">
         <p className={cn("text-5xl", chestReady && !chestOpened && "animate-float")} aria-hidden>

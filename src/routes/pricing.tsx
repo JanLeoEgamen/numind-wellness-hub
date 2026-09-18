@@ -1,16 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { PLANS } from "@/lib/mock-data";
 import { SiteLayout, PricingCards } from "@/components/layout/SiteChrome";
+import {
+  useSubscriptionPlans,
+  useMySubscription,
+  useSubscribeToPlan,
+} from "@/lib/server-data";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
       { title: "Pricing — NuMind" },
-      { name: "description", content: "Free, NuMind+ and NuMind Premium. Monthly or annual, cancel anytime." },
+      { name: "description", content: "Free, NuMind Plus and Wellness Champion. Monthly or annual, cancel anytime." },
       { property: "og:title", content: "Pricing — NuMind" },
-      { property: "og:description", content: "Free, NuMind+ and NuMind Premium. Monthly or annual, cancel anytime." },
+      { property: "og:description", content: "Free, NuMind Plus and Wellness Champion. Monthly or annual, cancel anytime." },
     ],
   }),
   component: PricingPage,
@@ -18,20 +25,79 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
   const [annual, setAnnual] = useState(false);
+  const { isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+  const plansQuery = useSubscriptionPlans();
+  const mySub = useMySubscription(isAuthenticated);
+  const subscribe = useSubscribeToPlan();
+
+  const plans = plansQuery.data && plansQuery.data.length ? plansQuery.data : PLANS;
+  // Signed-in visitors get the live entitlement so the cards highlight their
+  // current plan and "Choose" actually switches it.
+  const currentPlanSlug = !loading && isAuthenticated ? (mySub.data?.planSlug ?? null) : null;
+
+  const handleChoose = (slug: string) => {
+    if (!isAuthenticated) {
+      navigate({ to: "/signup" });
+      return;
+    }
+    subscribe.mutate(
+      { planSlug: slug, billingPeriod: annual ? "annual" : "monthly" },
+      {
+        onSuccess: (saved) => {
+          if (saved.plan && saved.plan.slug === "free") {
+            toast.success("You're now on the Free plan.");
+          } else {
+            toast.success(
+              `Welcome to ${saved.plan?.name ?? "NuMind Plus"}! Premium features are unlocked.`,
+            );
+          }
+        },
+        onError: (e) => toast.error(e.message),
+      },
+    );
+  };
+
   return (
     <SiteLayout>
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <h1 className="text-4xl font-extrabold">Simple pricing</h1>
         <p className="mt-3 text-muted-foreground">Start free. Upgrade when NuMind earns it.</p>
+
+        {isAuthenticated && currentPlanSlug ? (
+          <p className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded-full bg-mint/40 px-3 py-1 font-semibold">
+              Current plan: {mySub.data?.plan?.name ?? "Free"}
+            </span>
+            <span className="text-muted-foreground">
+              {mySub.data?.isPremium
+                ? "Premium features are unlocked. Visit Settings to manage your subscription."
+                : "Upgrade anytime to unlock NuMind Plus features."}
+            </span>
+            <Link to="/app/settings" className="focus-ring font-semibold underline underline-offset-2">
+              Manage in Settings →
+            </Link>
+          </p>
+        ) : null}
+
         <div className="mt-6 inline-flex rounded-full bg-muted p-1">
           {[false, true].map((a) => (
             <button key={String(a)} onClick={() => setAnnual(a)} aria-pressed={annual === a} className={cn("focus-ring rounded-full px-5 py-2 text-sm font-semibold", annual === a ? "bg-brand text-navy" : "")}>
-              {a ? "Annual · save 25%" : "Monthly"}
+              {a ? "Annual · save up to 28%" : "Monthly"}
             </button>
           ))}
         </div>
-        <div className="mt-8"><PricingCards annual={annual} plans={PLANS} /></div>
-        <p className="mt-8 text-xs text-muted-foreground">Prices shown are examples and will be configurable per region at launch.</p>
+        <div className="mt-8">
+          <PricingCards
+            annual={annual}
+            plans={plans}
+            currentPlanSlug={currentPlanSlug}
+            onChoose={handleChoose}
+          />
+        </div>
+        <p className="mt-8 text-xs text-muted-foreground">
+          Prices are configured in the <Link to="/admin" className="focus-ring underline underline-offset-2">admin catalog</Link> and billed straight from the database.
+        </p>
       </div>
     </SiteLayout>
   );

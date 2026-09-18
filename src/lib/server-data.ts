@@ -35,7 +35,14 @@ import {
   getMyScreeningCompletions,
   getSafetyResources,
 } from "@/lib/server-functions";
+import {
+  getSubscriptionPlans,
+  getMySubscription,
+  subscribeToPlan,
+  cancelMySubscription,
+} from "@/lib/subscription-functions";
 import type { NumiMessage, UserSettings, RewardsMarketplace, UpdateProfileInput } from "@/lib/server-functions";
+import type { MySubscription, BillingPeriod } from "@/lib/subscription-functions";
 
 // Server functions return UUID primary keys; mock-data uses short slug ids.
 // Guard server writes with this so we never post a non-UUID to an FK column.
@@ -211,3 +218,51 @@ export function useSafetyResources() {
   return useQuery({ queryKey: ["safetyResources"], queryFn: () => getSafetyResources() });
 }
 
+
+
+export function useSubscriptionPlans() {
+  return useQuery({ queryKey: ["subscriptionPlans"], queryFn: () => getSubscriptionPlans() });
+}
+
+export function useMySubscription(enabled = true) {
+  return useQuery({
+    queryKey: ["mySubscription"],
+    queryFn: () => getMySubscription(),
+    enabled,
+  });
+}
+
+export function useSubscribeToPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (d: { planSlug: string; billingPeriod: BillingPeriod }) =>
+      subscribeToPlan({ data: d }),
+    onSuccess: (saved: MySubscription) => {
+      // Entitlement drives several catalogs; refresh everything it gates.
+      queryClient.setQueryData(["mySubscription"], saved);
+      queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
+      queryClient.invalidateQueries({ queryKey: ["mindGymActivities"] });
+      queryClient.invalidateQueries({ queryKey: ["learningCatalog"] });
+      queryClient.invalidateQueries({ queryKey: ["myQuests"] });
+      queryClient.invalidateQueries({ queryKey: ["myGames"] });
+      queryClient.invalidateQueries({ queryKey: ["rewardsMarketplace"] });
+      queryClient.invalidateQueries({ queryKey: ["numiConversations"] });
+    },
+  });
+}
+
+export function useCancelMySubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => cancelMySubscription(),
+    onSuccess: (saved: MySubscription) => {
+      queryClient.setQueryData(["mySubscription"], saved);
+      queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
+      queryClient.invalidateQueries({ queryKey: ["mindGymActivities"] });
+      queryClient.invalidateQueries({ queryKey: ["learningCatalog"] });
+      queryClient.invalidateQueries({ queryKey: ["myQuests"] });
+      queryClient.invalidateQueries({ queryKey: ["myGames"] });
+      queryClient.invalidateQueries({ queryKey: ["rewardsMarketplace"] });
+    },
+  });
+}

@@ -12,9 +12,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { getUserEntitlement } from "@/lib/subscription-functions";
 
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+// Premium is enforced server-side from the user's current plan so pricing (what
+// plan someone pays for) is the real basis of access — not just UI hiding.
+async function requirePremium(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<void> {
+  const ent = await getUserEntitlement(supabase, userId);
+  if (!ent.isPremium) {
+    throw new Error("This is part of NuMind Plus. Upgrade to unlock it.");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -644,9 +657,17 @@ export const completeMindGymActivity = createServerFn({ method: "POST" })
 
     const { data: activity } = await supabase
       .from("mind_gym_activities")
-      .select("id, xp_reward")
+      .select("id, xp_reward, premium_required")
       .eq("id", data.activityId)
       .maybeSingle();
+
+    // Premium activities only award progress to paid plans.
+    if (activity?.premium_required) {
+      const entitlement = await getUserEntitlement(supabase, userId);
+      if (!entitlement.isPremium) {
+        throw new Error("This Mind Gym activity is part of NuMind Plus. Upgrade to unlock it.");
+      }
+    }
 
     const xp = activity?.xp_reward ?? 0;
 
@@ -1363,14 +1384,19 @@ export const setGardenItemPlaced = createServerFn({ method: "POST" })
 export const getMindGymActivities = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
-    const { data } = await supabase
-      .from("mind_gym_activities")
-      .select(
-        "id, slug, title, description, category, duration_minutes, difficulty, emoji, xp_reward, instructions, premium_required",
-      )
-      .eq("active", true)
-      .order("created_at", { ascending: true });
+    const { supabase, userId } = context;
+    const [activityRes, entitlement] = await Promise.all([
+      supabase
+        .from("mind_gym_activities")
+        .select(
+          "id, slug, title, description, category, duration_minutes, difficulty, emoji, xp_reward, instructions, premium_required",
+        )
+        .eq("active", true)
+        .order("created_at", { ascending: true }),
+      getUserEntitlement(supabase, userId),
+    ]);
+    if (activityRes.error) throw new Error(activityRes.error.message);
+    const { data } = activityRes;
     return (data ?? []).map((a) => ({
       id: a.id,
       slug: a.slug,
@@ -1382,7 +1408,7 @@ export const getMindGymActivities = createServerFn({ method: "POST" })
       emoji: a.emoji,
       xp: a.xp_reward,
       instructions: (a.instructions ?? []) as string[],
-      locked: a.premium_required,
+      locked: a.premium_required && !entitlement.isPremium,
     }));
   });
 
@@ -1390,19 +1416,23 @@ export const getLearningCatalog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data: lessons } = await supabase
-      .from("learning_content")
-      .select(
-        "id, slug, title, summary, content_type, category, duration_minutes, emoji, xp_reward, premium_required",
-      )
-      .eq("active", true)
-      .order("created_at", { ascending: true });
+    const [lessonsRes, progressRes, entitlement] = await Promise.all([
+      supabase
+        .from("learning_content")
+        .select(
+          "id, slug, title, summary, content_type, category, duration_minutes, emoji, xp_reward, premium_required",
+        )
+        .eq("active", true)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("learning_progress")
+        .select("content_id, status, progress_percent, xp_awarded")
+        .eq("user_id", userId),
+      getUserEntitlement(supabase, userId),
+    ]);
 
-    const { data: progress } = await supabase
-      .from("learning_progress")
-      .select("content_id, status, progress_percent, xp_awarded")
-      .eq("user_id", userId);
-
+    const { data: lessons } = lessonsRes;
+    const { data: progress } = progressRes;
     const byId = new Map((progress ?? []).map((p) => [p.content_id, p]));
     return (lessons ?? []).map((l) => {
       const p = byId.get(l.id);
@@ -1416,7 +1446,7 @@ export const getLearningCatalog = createServerFn({ method: "POST" })
         minutes: l.duration_minutes,
         emoji: l.emoji,
         xp: l.xp_reward,
-        locked: l.premium_required,
+        locked: l.premium_required && !entitlement.isPremium,
         progress: p?.progress_percent ?? 0,
         completed: p?.status === "completed",
       };
@@ -1432,9 +1462,18 @@ export const completeLesson = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: lesson } = await supabase
       .from("learning_content")
-      .select("xp_reward")
+      .select("xp_reward, premium_required")
       .eq("id", data.contentId)
       .maybeSingle();
+
+    // Premium lessons only award progress to paid plans.
+    if (lesson?.premium_required) {
+      const entitlement = await getUserEntitlement(supabase, userId);
+      if (!entitlement.isPremium) {
+        throw new Error("This lesson is part of NuMind Plus. Upgrade to unlock it.");
+      }
+    }
+
     const xp = lesson?.xp_reward ?? 0;
 
     const { error } = await supabase
@@ -1494,26 +1533,27 @@ export type QuestView = {
   goal: number;
   progress: number;
   completed: boolean;
+  locked: boolean;
 };
 
 export const getMyQuests = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<QuestView[]> => {
     const { supabase, userId } = context;
-    const { data: quests } = await (supabase as any)
-      .from("quests")
-      .select(
-        "id, slug, title, description, category, quest_type, emoji, xp_reward, requirements, premium_required",
-      )
-      .eq("active", true)
-      .order("created_at", { ascending: true });
-
-    const { data: completions } = (quests ?? []).length
-      ? await (supabase as any)
-          .from("quest_completions")
-          .select("quest_id, progress, completed, period_key, xp_awarded")
-          .eq("user_id", userId)
-      : { data: [] };
+    const [{ data: quests }, { data: completions }, entitlement] = await Promise.all([
+      (supabase as any)
+        .from("quests")
+        .select(
+          "id, slug, title, description, category, quest_type, emoji, xp_reward, requirements, premium_required",
+        )
+        .eq("active", true)
+        .order("created_at", { ascending: true }),
+      (supabase as any)
+        .from("quest_completions")
+        .select("quest_id, progress, completed, period_key, xp_awarded")
+        .eq("user_id", userId),
+      getUserEntitlement(supabase, userId),
+    ]);
 
     return (quests ?? []).map((q: any) => {
       const key = periodKeyFor(q.quest_type);
@@ -1540,6 +1580,7 @@ export const getMyQuests = createServerFn({ method: "POST" })
         goal: reqCount,
         progress: Math.min(reqCount, done ? reqCount : progressSoFar),
         completed: done,
+        locked: q.premium_required && !entitlement.isPremium,
       };
     });
   });
@@ -1554,10 +1595,18 @@ export const completeQuest = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: quest } = await supabase
       .from("quests")
-      .select("xp_reward, quest_type, slug")
+      .select("xp_reward, quest_type, slug, premium_required")
       .eq("id", data.questId)
       .maybeSingle();
     if (!quest) return { completed: false, awarded: false };
+
+    // Weekly / monthly / seasonal missions are premium content.
+    if (quest.premium_required) {
+      const entitlement = await getUserEntitlement(supabase, userId);
+      if (!entitlement.isPremium) {
+        throw new Error("This quest is part of NuMind Plus. Upgrade to unlock it.");
+      }
+    }
 
     const periodKey = periodKeyFor(quest.quest_type);
     const { data: existing } = await supabase
@@ -1904,24 +1953,18 @@ export const getMyGames = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const today = toDateKey(new Date());
 
-    const [gamesRes, playsRes, subRes] = await Promise.all([
+    const [gamesRes, playsRes, entitlement] = await Promise.all([
       supabase
         .from("games")
         .select("id, slug, name, description, emoji, category, xp_reward, premium_required")
         .eq("active", true)
         .order("sort_order"),
       supabase.from("game_plays").select("game").eq("user_id", userId).eq("played_date", today),
-      supabase
-        .from("subscriptions")
-        .select("status")
-        .eq("user_id", userId)
-        .in("status", ["active", "trialing"])
-        .maybeSingle(),
+      getUserEntitlement(supabase, userId),
     ]);
 
     if (gamesRes.error) throw new Error(gamesRes.error.message);
     if (playsRes.error) throw new Error(playsRes.error.message);
-    if (subRes.error) throw new Error(subRes.error.message);
 
     const playedSet = new Set((playsRes.data ?? []).map((p) => p.game));
 
@@ -1937,7 +1980,7 @@ export const getMyGames = createServerFn({ method: "POST" })
         premiumRequired: g.premium_required,
         playedToday: playedSet.has(g.slug),
       })),
-      isPremium: !!subRes.data,
+      isPremium: entitlement.isPremium,
       playedTodayCount: playedSet.size,
     };
   });
@@ -1958,11 +2001,19 @@ export const recordGamePlay = createServerFn({ method: "POST" })
     // future FK/mapping to `games.id` stays clean).
     const { data: game } = await supabase
       .from("games")
-      .select("slug, xp_reward")
+      .select("slug, xp_reward, premium_required")
       .eq("slug", data.game)
       .eq("active", true)
       .maybeSingle();
     if (!game) return { awarded: false, playedToday: false };
+
+    // Premium games only award progress to paid plans.
+    if (game.premium_required) {
+      const entitlement = await getUserEntitlement(supabase, userId);
+      if (!entitlement.isPremium) {
+        throw new Error("This game is part of NuMind Plus. Upgrade to unlock it.");
+      }
+    }
 
     const xp = Math.round(data.xp ?? game.xp_reward ?? 20);
 
@@ -2274,6 +2325,8 @@ export const newNumiConversation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ id: string }> => {
     const { supabase, userId } = context;
+    // Numi is included in the NuMind Plus / Champion plans.
+    await requirePremium(supabase, userId);
     const { data, error } = await supabase
       .from("ai_conversations")
       .insert({ user_id: userId })
@@ -2326,6 +2379,8 @@ export const sendNumiMessage = createServerFn({ method: "POST" })
     const text = (data.message ?? "").trim();
     const intent = data.intent?.trim() || null;
     if (!text) throw new Error("Numi message cannot be empty");
+    // Numi is included in the NuMind Plus / Champion plans.
+    await requirePremium(supabase, userId);
 
     // 1. Resolve the conversation (a new one is created on the first message).
     let conversationId: string | null = data.conversationId ?? null;
@@ -3824,7 +3879,7 @@ async function getRewardsMarketplaceSummary(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<RewardsMarketplace> {
-  const [catalogRes, ownedRes, xpRes, spentRes, levelRes, subRes] = await Promise.all([
+  const [catalogRes, ownedRes, xpRes, spentRes, levelRes, entitlement] = await Promise.all([
     supabase.from("rewards").select("*").eq("active", true).order("xp_cost"),
     supabase.from("user_rewards").select("reward_id, equipped").eq("user_id", userId),
     supabase.from("xp_transactions").select("amount").eq("user_id", userId),
@@ -3833,12 +3888,7 @@ async function getRewardsMarketplaceSummary(
       .from("levels")
       .select("level_number, name, xp_required")
       .order("xp_required"),
-    supabase
-      .from("subscriptions")
-      .select("status")
-      .eq("user_id", userId)
-      .in("status", ["active", "trialing"])
-      .maybeSingle(),
+    getUserEntitlement(supabase, userId),
   ]);
 
   if (catalogRes.error) throw new Error(catalogRes.error.message);
@@ -3846,7 +3896,6 @@ async function getRewardsMarketplaceSummary(
   if (xpRes.error) throw new Error(xpRes.error.message);
   if (spentRes.error) throw new Error(spentRes.error.message);
   if (levelRes.error) throw new Error(levelRes.error.message);
-  if (subRes.error) throw new Error(subRes.error.message);
 
   const lifetimeXp = (xpRes.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
   const spent = (spentRes.data ?? []).reduce((s, r) => s + (r.xp_spent ?? 0), 0);
@@ -3886,7 +3935,7 @@ async function getRewardsMarketplaceSummary(
     balance: Math.max(0, lifetimeXp - spent),
     lifetimeXp,
     level: { number: currentLevel.level_number, name: currentLevel.name },
-    isPremium: !!subRes.data,
+    isPremium: entitlement.isPremium,
     equippedId,
     rewards,
   };
@@ -3923,16 +3972,11 @@ export const redeemReward = createServerFn({ method: "POST" })
       .maybeSingle();
     if (existing) return getRewardsMarketplaceSummary(supabase, userId);
 
-    const [xpRes, spentRes, levelRes, subRes] = await Promise.all([
+    const [xpRes, spentRes, levelRes, entitlement] = await Promise.all([
       supabase.from("xp_transactions").select("amount").eq("user_id", userId),
       supabase.from("user_rewards").select("xp_spent").eq("user_id", userId),
       supabase.from("levels").select("level_number, xp_required").order("xp_required"),
-      supabase
-        .from("subscriptions")
-        .select("status")
-        .eq("user_id", userId)
-        .in("status", ["active", "trialing"])
-        .maybeSingle(),
+      getUserEntitlement(supabase, userId),
     ]);
 
     const lifetimeXp = (xpRes.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
@@ -3949,7 +3993,7 @@ export const redeemReward = createServerFn({ method: "POST" })
       throw new Error(`Reach Level ${reward.unlock_level} to unlock this reward.`);
     }
 
-    const isPremium = !!subRes.data;
+    const isPremium = entitlement.isPremium;
     if (reward.premium_required && !isPremium) {
       throw new Error("This reward is part of NuMind Plus.");
     }

@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { LESSONS } from "@/lib/mock-data";
 import { useNuMind } from "@/lib/numind-store";
 import { completeLesson } from "@/lib/server-functions";
 import { useLearningCatalog, isUuid } from "@/lib/server-data";
-import { PageHeader, SoftCard, ProgressBar, XPBadge, EmptyState } from "@/components/numind/ui-kit";
+import { PageHeader, SoftCard, ProgressBar, XPBadge, LockedPill, EmptyState } from "@/components/numind/ui-kit";
 import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +60,7 @@ function LearningPage() {
                     <span className="text-3xl" aria-hidden>
                       <Icon symbol={l.emoji} size={32} />
                     </span>
-                    <XPBadge xp={l.xp} />
+                    {(l as { locked?: boolean }).locked ? <LockedPill /> : <XPBadge xp={l.xp} />}
                   </div>
                   <p className="mt-3 font-semibold">{l.title}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{(l as any).summary}</p>
@@ -72,24 +72,33 @@ function LearningPage() {
                     <span className="rounded-full bg-muted px-2 py-1">{l.category}</span>
                   </div>
                   <ProgressBar className="mt-3" tone="cyan" value={complete ? 100 : l.progress} max={100} />
-                  <button
-                    onClick={() => {
-                      if (complete) return;
-                      setDone((d) => [...d, l.id]);
-                      awardXp(l.xp, `${l.title} completed`);
-                      // Persist completion + XP when we hold a real server uuid.
-                      if (isUuid(l.id)) {
-                        completeLesson({ data: { contentId: l.id } }).catch(() => {});
-                      }
-                    }}
-                    className={cn("focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold", complete ? "bg-mint/40" : "bg-brand text-navy")}
-                  >
-                    {complete ? (
-                      <>
-                        <Icon symbol="Check" size={13} className="mr-1 inline-block align-[-1px]" /> Completed
-                      </>
-                    ) : l.progress > 0 ? "Continue" : "Start lesson"}
-                  </button>
+                  {(l as { locked?: boolean }).locked ? (
+                    <Link
+                      to="/pricing"
+                      className="focus-ring mt-4 block rounded-full bg-brand px-4 py-2.5 text-center text-sm font-bold text-navy"
+                    >
+                      Upgrade for NuMind+
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (complete) return;
+                        setDone((d) => [...d, l.id]);
+                        awardXp(l.xp, `${l.title} completed`);
+                        // Persist completion + XP when we hold a real server uuid.
+                        if (isUuid(l.id)) {
+                          completeLesson({ data: { contentId: l.id } }).catch(() => {});
+                        }
+                      }}
+                      className={cn("focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold", complete ? "bg-mint/40" : "bg-brand text-navy")}
+                    >
+                      {complete ? (
+                        <>
+                          <Icon symbol="Check" size={13} className="mr-1 inline-block align-[-1px]" /> Completed
+                        </>
+                      ) : l.progress > 0 ? "Continue" : "Start lesson"}
+                    </button>
+                  )}
                 </SoftCard>
               </li>
             );

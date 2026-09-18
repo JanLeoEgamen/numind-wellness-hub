@@ -7,6 +7,7 @@ import { Icon } from "@/components/numind/icon";
 import { cn } from "@/lib/utils";
 import type { UserSettings } from "@/lib/server-functions";
 import { changeMyPassword, deleteMyAccount, exportMyData } from "@/lib/server-functions";
+import { useMySubscription, useCancelMySubscription } from "@/lib/server-data";
 import { signOut } from "@/hooks/useAuth";
 import {
   Dialog,
@@ -66,9 +67,19 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
+function fmtDate(d: string | null): string | null {
+  if (!d) return null;
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 function SettingsPage() {
   const { settings, setSettings } = useNuMind();
   const navigate = useNavigate();
+  const mySub = useMySubscription();
+  const cancel = useCancelMySubscription();
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -155,6 +166,46 @@ function SettingsPage() {
           <Row label="Profile" hint="Avatar, nickname and goals" control={<Link to="/app/profile" className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold">Edit</Link>} />
           <Row label="Password & security" control={<button onClick={() => setPasswordOpen(true)} className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold">Manage</button>} />
           <Row label="Delete account" hint="This removes your data permanently" control={<button onClick={() => setDeleteOpen(true)} className="focus-ring rounded-full bg-destructive/15 px-4 py-2 text-sm font-semibold text-destructive">Delete</button>} />
+        </SoftCard>
+
+        {/* Subscription — the plan you pay for is the basis of feature access */}
+        <SoftCard>
+          <SectionTitle>Subscription</SectionTitle>
+          <div className="flex flex-wrap items-start justify-between gap-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">
+                <Icon symbol={mySub.data?.plan?.emoji ?? "Sprout"} size={16} className="mr-1 inline-block align-[-2px]" />
+                {mySub.data?.plan?.name ?? "Free"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {mySub.data?.isPremium ? (
+                  <>
+                    {mySub.data.status === "canceled"
+                      ? "Canceled — your plan stays unlocked until the end of this billing period."
+                      : `Premium ${mySub.data.billingPeriod === "annual" ? "annual" : "monthly"} plan${mySub.data.currentPeriodEnd ? ` · renews ${fmtDate(mySub.data.currentPeriodEnd)}` : ""}`}
+                  </>
+                ) : (
+                  "Free plan — upgrade anytime to unlock NuMind Plus features."
+                )}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {mySub.data?.isPremium ? (
+                <>
+                  <Link to="/pricing" className="focus-ring rounded-full bg-muted px-4 py-2 text-sm font-semibold">Change plan</Link>
+                  <button
+                    onClick={() => setCancelOpen(true)}
+                    disabled={cancel.isPending}
+                    className="focus-ring rounded-full bg-destructive/15 px-4 py-2 text-sm font-semibold text-destructive disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <Link to="/pricing" className="focus-ring rounded-full bg-brand px-4 py-2 text-sm font-bold text-navy">See plans</Link>
+              )}
+            </div>
+          </div>
         </SoftCard>
 
         <SoftCard>
@@ -319,6 +370,51 @@ function SettingsPage() {
               className="bg-destructive text-white hover:brightness-110"
             >
               {deleting ? "Deleting…" : "Delete my data"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel subscription */}
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent className="max-w-sm rounded-3xl text-center">
+          <AlertDialogHeader className="items-center text-center">
+            <span className="text-4xl" aria-hidden>
+              <Icon symbol="CalendarRange" size={40} />
+            </span>
+            <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll keep access to your current plan until the end of this billing period,
+              then you'll be on the Free plan. You can resubscribe anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogCancel disabled={cancel.isPending}>Keep my plan</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                cancel.mutate(
+                  undefined,
+                  {
+                    onSuccess: (saved) => {
+                      setCancelOpen(false);
+                      if (saved.isPremium) {
+                        toast.success("Cancellation scheduled — access continues until your period ends.");
+                      } else {
+                        toast.success("You've been moved to the Free plan.");
+                      }
+                    },
+                    onError: (err) => {
+                      setCancelOpen(false);
+                      toastError(err, "Could not cancel your subscription.");
+                    },
+                  },
+                );
+              }}
+              disabled={cancel.isPending}
+              className="bg-destructive text-white hover:brightness-110"
+            >
+              {cancel.isPending ? "Canceling…" : "Cancel subscription"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

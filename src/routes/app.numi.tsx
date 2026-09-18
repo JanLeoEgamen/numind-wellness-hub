@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { USER } from "@/lib/mock-data";
@@ -6,6 +6,7 @@ import {
   useMyStats,
   useMyNumiConversations,
   useNumiConversationMessages,
+  useMySubscription,
 } from "@/lib/server-data";
 import {
   archiveNumiConversation,
@@ -63,6 +64,7 @@ function NumiPage() {
   const name = stats.data?.profile?.firstName ?? USER.name;
   const queryClient = useQueryClient();
   const { awardXp } = useNuMind();
+  const mySub = useMySubscription();
 
   const { data: conversations, refetch: refetchConversations } = useMyNumiConversations();
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -192,6 +194,8 @@ function NumiPage() {
     await startNewChat();
   }
 
+  const gated = mySub.data !== undefined && !mySub.data.isPremium;
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col">
       <PageHeader
@@ -199,6 +203,7 @@ function NumiPage() {
         title="Meet Numi"
         subtitle="Your AI wellness companion — here to motivate, support, organize and celebrate."
         action={
+          gated ? undefined : (
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={startNewChat}
@@ -214,9 +219,29 @@ function NumiPage() {
               Clear
             </button>
           </div>
+          )
         }
       />
 
+      {gated ? (
+        <div className="card-soft bg-hero px-6 py-12 text-center">
+          <p className="text-5xl" aria-hidden>
+            <Icon symbol="Bot" size={48} />
+          </p>
+          <h3 className="mt-3 text-xl font-bold">Numi is part of NuMind Plus</h3>
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            Chat with Numi for motivation, focus help, goal setting and celebrating your progress.
+            Upgrade to start your first conversation.
+          </p>
+          <Link
+            to="/pricing"
+            className="focus-ring mt-5 inline-block rounded-full bg-brand px-6 py-3 text-sm font-bold text-navy"
+          >
+            See plans
+          </Link>
+        </div>
+      ) : (
+      <>
       {conversations && conversations.length > 0 ? (
         <div
           className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1"
@@ -322,6 +347,8 @@ function NumiPage() {
           </button>
         </form>
       </div>
+      </>
+      )}
 
       <div className="mt-4">
         <DisclaimerNote>

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -145,16 +145,25 @@ function PlayPage() {
                 </div>
                 <p className="mt-3 font-semibold">{g.name}</p>
                 <p className="text-sm text-muted-foreground">{g.description}</p>
-                <button
-                  disabled={locked || g.playedToday}
-                  onClick={() => setOpen(g.slug)}
-                  className={cn(
-                    "focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold",
-                    locked || g.playedToday ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-brand text-navy",
-                  )}
-                >
-                  {locked ? "Premium" : g.playedToday ? "Played today" : "Play"}
-                </button>
+                {locked ? (
+                  <Link
+                    to="/pricing"
+                    className="focus-ring mt-4 block rounded-full bg-brand px-4 py-2.5 text-center text-sm font-bold text-navy"
+                  >
+                    Upgrade for Premium
+                  </Link>
+                ) : (
+                  <button
+                    disabled={g.playedToday}
+                    onClick={() => setOpen(g.slug)}
+                    className={cn(
+                      "focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold",
+                      g.playedToday ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-brand text-navy",
+                    )}
+                  >
+                    {g.playedToday ? "Played today" : "Play"}
+                  </button>
+                )}
               </SoftCard>
             </li>
           );

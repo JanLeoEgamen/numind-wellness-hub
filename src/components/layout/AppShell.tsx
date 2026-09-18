@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useNuMind } from "@/lib/numind-store";
-import { useMyStats, useMyNotifications } from "@/lib/server-data";
+import { useMyStats, useMyNotifications, useMySubscription } from "@/lib/server-data";
 import { USER } from "@/lib/mock-data";
 import { NumiAvatar, StreakBadge, ProgressBar } from "@/components/numind/ui-kit";
 import { CelebrationModal } from "@/components/numind/celebration";
@@ -67,6 +67,7 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
   const { xp, xpInLevel, xpForLevel, levelName, levelEmoji, streak, levelIndex } = useNuMind();
   const { data: srvStats } = useMyStats();
   const { data: srvNotes } = useMyNotifications();
+  const { data: mySub } = useMySubscription();
   const avatar = srvStats?.profile?.avatar ?? USER.avatar;
   const [moreOpen, setMoreOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -123,6 +124,19 @@ export function AppShell({ children, rightPanel }: { children: ReactNode; rightP
             <p className="mt-2 text-xs text-muted-foreground">
               {xpInLevel.toLocaleString()} / {xpForLevel.toLocaleString()} XP
             </p>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold">
+                <Icon symbol={mySub?.plan?.emoji ?? "Sprout"} size={13} className="inline-block align-[-2px]" />
+                {mySub?.plan?.name ?? "Free"}
+              </p>
+              {mySub?.plan && !mySub.isPremium ? (
+                <Link to="/pricing" className="focus-ring rounded-full bg-brand px-3 py-1 text-[11px] font-bold text-navy">
+                  Upgrade
+                </Link>
+              ) : mySub?.plan && mySub.isPremium ? (
+                <span className="rounded-full bg-mint/40 px-3 py-1 text-[11px] font-semibold">Premium</span>
+              ) : null}
+            </div>
           </div>
         </aside>
 

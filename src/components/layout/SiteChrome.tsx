@@ -111,36 +111,74 @@ function SiteLayoutInner({ children }: { children: ReactNode }) {
   );
 }
 
-export function PricingCards({ annual = false, plans }: { annual?: boolean; plans: Array<{ id: string; name: string; emoji: string; monthly: number; annual: number; tagline: string; popular?: boolean; features: string[] }> }) {
+export type PricingPlan = {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  emoji: string | null;
+  monthlyCents: number;
+  annualCents: number;
+  features: string[];
+  popular?: boolean;
+};
+
+export function PricingCards({
+  annual = false,
+  plans,
+  currentPlanSlug,
+  onChoose,
+}: {
+  annual?: boolean;
+  plans: PricingPlan[];
+  currentPlanSlug?: string | null;
+  onChoose?: (slug: string) => void;
+}) {
   return (
     <ul className="grid gap-5 lg:grid-cols-3">
-      {plans.map((p) => (
-        <li key={p.id}>
-          <div className={`card-soft hover-lift flex h-full flex-col p-6 ${p.popular ? "border-teal ring-2 ring-teal/40" : ""}`}>
-            {p.popular ? <span className="mb-3 w-fit rounded-full bg-brand px-3 py-1 text-xs font-bold text-navy">Most loved</span> : null}
-            <p className="text-3xl" aria-hidden>
-              <Icon symbol={p.emoji} size={32} className="text-foreground" />
-            </p>
-            <h3 className="mt-2 text-xl font-bold">{p.name}</h3>
-            <p className="text-sm text-muted-foreground">{p.tagline}</p>
-            <p className="mt-4 text-3xl font-bold">
-              ${annual ? p.annual.toFixed(2) : p.monthly.toFixed(2)}
-              <span className="text-sm font-medium text-muted-foreground">/{annual ? "year" : "month"}</span>
-            </p>
-            <ul className="mt-5 grid flex-1 gap-2 text-sm">
-              {p.features.map((f) => (
-                <li key={f} className="flex gap-2">
-                  <Icon symbol="Check" size={14} strokeWidth={2.5} className="mt-0.5 shrink-0 text-teal" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link to="/signup" className={`focus-ring mt-6 rounded-full px-5 py-3 text-center text-sm font-bold ${p.popular ? "bg-brand text-navy" : "bg-muted hover:bg-accent"}`}>
-              {p.monthly === 0 ? "Start free" : `Choose ${p.name}`}
-            </Link>
-          </div>
-        </li>
-      ))}
+      {plans.map((p) => {
+        const current = currentPlanSlug === p.slug;
+        return (
+          <li key={p.id}>
+            <div className={`card-soft hover-lift flex h-full flex-col p-6 ${p.popular ? "border-teal ring-2 ring-teal/40" : ""}`}>
+              {p.popular ? <span className="mb-3 w-fit rounded-full bg-brand px-3 py-1 text-xs font-bold text-navy">Most loved</span> : null}
+              <p className="text-3xl" aria-hidden>
+                <Icon symbol={p.emoji ?? "Sparkles"} size={32} className="text-foreground" />
+              </p>
+              <h3 className="mt-2 text-xl font-bold">{p.name}</h3>
+              <p className="text-sm text-muted-foreground">{p.tagline}</p>
+              <p className="mt-4 text-3xl font-bold">
+                ${((annual ? p.annualCents : p.monthlyCents) / 100).toFixed(2)}
+                <span className="text-sm font-medium text-muted-foreground">/{annual ? "year" : "month"}</span>
+              </p>
+              <ul className="mt-5 grid flex-1 gap-2 text-sm">
+                {p.features.map((f) => (
+                  <li key={f} className="flex gap-2">
+                    <Icon symbol="Check" size={14} strokeWidth={2.5} className="mt-0.5 shrink-0 text-teal" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              {current ? (
+                <span className="focus-ring mt-6 rounded-full bg-mint/40 px-5 py-3 text-center text-sm font-bold">
+                  Current plan
+                </span>
+              ) : onChoose ? (
+                <button
+                  onClick={() => onChoose(p.slug)}
+                  className={`focus-ring mt-6 rounded-full px-5 py-3 text-center text-sm font-bold ${p.popular ? "bg-brand text-navy" : "bg-muted hover:bg-accent"}`}
+                >
+                  {p.monthlyCents === 0 ? "Start free" : `Choose ${p.name}`}
+                </button>
+              ) : (
+                <Link to="/signup" className={`focus-ring mt-6 rounded-full px-5 py-3 text-center text-sm font-bold ${p.popular ? "bg-brand text-navy" : "bg-muted hover:bg-accent"}`}>
+                  {p.monthlyCents === 0 ? "Start free" : `Choose ${p.name}`}
+                </Link>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

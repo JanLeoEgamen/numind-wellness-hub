@@ -270,53 +270,56 @@ export const NOTIFICATIONS = [
   { id: "n7", emoji: "Trophy", title: "A new Quest has started!", time: "1 week ago", unread: false, category: "Quest" },
 ];
 
+// Pricing catalog fallback (matches the seeded `subscription_plans` rows).
+// The live /pricing and /landing pages prefer the database catalog from
+// getSubscriptionPlans(); this exists so the marketing pages still render when
+// the backend is unreachable.
 export const PLANS = [
   {
     id: "free",
+    slug: "free",
     name: "Free",
-    emoji: "Sprout",
-    monthly: 0,
-    annual: 0,
-    tagline: "Start the habit.",
-    features: ["Daily Reset", "Limited Mind Gym", "Basic Journal", "Limited Healthy Play"],
+    emoji: "🌱",
+    monthlyCents: 0,
+    annualCents: 0,
+    tagline: "Everything you need to start",
+    features: ["Daily Reset", "Core Mind Gym activities", "Journal", "Wellness Garden", "Daily quests"],
   },
   {
     id: "plus",
-    name: "NuMind+",
-    emoji: "Sprout",
-    monthly: 9.99,
-    annual: 89.99,
-    tagline: "The full wellness routine.",
+    slug: "plus",
+    name: "NuMind Plus",
+    emoji: "🌷",
+    monthlyCents: 799,
+    annualCents: 6900,
+    tagline: "For everyday growth",
     popular: true,
     features: [
-      "Full Mind Gym",
-      "Healthy Play",
-      "Wellness Quest",
-      "Wellness Garden",
-      "My Journal",
-      "Learning Lounge",
-      "Memory Lane",
-      "Rewards",
+      "Everything in Free",
+      "Full Mind Gym library",
+      "Numi conversations",
+      "Weekly & monthly quests",
+      "All themes",
     ],
   },
   {
-    id: "premium",
-    name: "NuMind Premium",
-    emoji: "Flower2",
-    monthly: 19.99,
-    annual: 179.99,
-    tagline: "Everything, plus Numi.",
+    id: "champion",
+    slug: "champion",
+    name: "Wellness Champion",
+    emoji: "🏆",
+    monthlyCents: 1499,
+    annualCents: 12900,
+    tagline: "The whole garden",
     features: [
-      "Everything in NuMind+",
-      "Numi AI companion",
-      "Advanced personalization",
-      "Premium games & challenges",
-      "Exclusive Garden content",
-      "Premium themes",
-      "Monthly Journey",
+      "Everything in Plus",
+      "Seasonal challenges",
+      "Premium rewards",
+      "Monthly Journey report",
+      "Early access features",
     ],
   },
 ];
+
 
 export const FAQS = [
   { q: "Is NuMind a medical or healthcare app?", a: "No. NuMind is a consumer wellness and personal-growth app. It does not provide medical advice, diagnosis or treatment, and Numi is not a healthcare professional." },

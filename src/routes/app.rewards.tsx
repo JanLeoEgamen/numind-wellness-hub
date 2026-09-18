@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useNuMind } from "@/lib/numind-store";
@@ -163,22 +163,42 @@ function RewardsPage() {
                     </button>
                   ) : r.owned ? (
                     <span className="focus-ring mt-4 rounded-full bg-mint/40 px-4 py-2.5 text-sm font-bold">Unlocked</span>
-                  ) : (
+                  ) : premiumLocked ? (
+                    <Link
+                      to="/pricing"
+                      className="focus-ring mt-4 block rounded-full bg-brand px-4 py-2.5 text-center text-sm font-bold text-navy"
+                    >
+                      NuMind Plus
+                    </Link>
+                  ) : levelLocked ? (
                     <button
-                      disabled={pending || locked || !affordable}
+                      disabled
                       onClick={() => handleRedeem(r.id)}
                       className={cn(
                         "focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold",
-                        locked || !affordable ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-brand text-navy",
+                        "cursor-not-allowed bg-muted text-muted-foreground",
                       )}
                     >
-                      {premiumLocked
-                        ? "NuMind Plus"
-                        : levelLocked
-                          ? `Reach Level ${r.unlockLevel}`
-                          : affordable
-                            ? "Unlock"
-                            : "Not enough XP"}
+                      {`Reach Level ${r.unlockLevel}`}
+                    </button>
+                  ) : affordable ? (
+                    <button
+                      disabled={pending}
+                      onClick={() => handleRedeem(r.id)}
+                      className="focus-ring mt-4 rounded-full bg-brand px-4 py-2.5 text-sm font-bold text-navy"
+                    >
+                      Unlock
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      onClick={() => handleRedeem(r.id)}
+                      className={cn(
+                        "focus-ring mt-4 rounded-full px-4 py-2.5 text-sm font-bold",
+                        "cursor-not-allowed bg-muted text-muted-foreground",
+                      )}
+                    >
+                      Not enough XP
                     </button>
                   )}
                 </SoftCard>

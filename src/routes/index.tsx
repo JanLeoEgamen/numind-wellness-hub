@@ -4,6 +4,7 @@ import { SiteLayout, PricingCards } from "@/components/layout/SiteChrome";
 import { InstallAppSection } from "@/components/numind/install-app";
 import { NumiAvatar, SoftCard, ToneIcon } from "@/components/numind/ui-kit";
 import { Icon } from "@/components/numind/icon";
+import { useSubscriptionPlans } from "@/lib/server-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,6 +34,7 @@ const FEATURES = [
 ];
 
 function Landing() {
+  const plansQuery = useSubscriptionPlans();
   return (
     <SiteLayout>
       <section className="bg-hero">
@@ -201,7 +203,9 @@ function Landing() {
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-3xl font-bold">Simple pricing</h2>
         <p className="mt-2 text-muted-foreground">Monthly shown — annual plans save around 25%.</p>
-        <div className="mt-8"><PricingCards plans={PLANS} /></div>
+        <div className="mt-8">
+          <PricingCards plans={plansQuery.data && plansQuery.data.length ? plansQuery.data : PLANS} />
+        </div>
       </section>
 
       <InstallAppSection />
