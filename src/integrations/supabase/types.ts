@@ -1519,6 +1519,8 @@ screening_completions: {
           current_period_end: string | null
           id: string
           plan_id: string
+          provider: string | null
+          provider_subscription_id: string | null
           started_at: string
           status: string
           updated_at: string
@@ -1531,6 +1533,8 @@ screening_completions: {
           current_period_end?: string | null
           id?: string
           plan_id: string
+          provider?: string | null
+          provider_subscription_id?: string | null
           started_at?: string
           status?: string
           updated_at?: string
@@ -1543,6 +1547,8 @@ screening_completions: {
           current_period_end?: string | null
           id?: string
           plan_id?: string
+          provider?: string | null
+          provider_subscription_id?: string | null
           started_at?: string
           status?: string
           updated_at?: string
@@ -1554,6 +1560,66 @@ screening_completions: {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          billing_period: string | null
+          created_at: string
+          currency: string
+          id: string
+          plan_slug: string | null
+          provider: string
+          provider_payment_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          billing_period?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          plan_slug?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          billing_period?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          plan_slug?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "auth.users"
             referencedColumns: ["id"]
           },
         ]

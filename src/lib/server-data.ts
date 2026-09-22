@@ -40,9 +40,15 @@ import {
   getMySubscription,
   subscribeToPlan,
   cancelMySubscription,
+  createPaypalCheckout,
+  confirmPaypalSubscription,
 } from "@/lib/subscription-functions";
 import type { NumiMessage, UserSettings, RewardsMarketplace, UpdateProfileInput } from "@/lib/server-functions";
-import type { MySubscription, BillingPeriod } from "@/lib/subscription-functions";
+import type { BillingPeriod, MySubscription } from "@/lib/subscription-functions";
+import type {
+  CreatePaypalCheckoutInput,
+  CreatePaypalCheckoutResult,
+} from "@/lib/subscription-functions";
 
 // Server functions return UUID primary keys; mock-data uses short slug ids.
 // Guard server writes with this so we never post a non-UUID to an FK column.
@@ -250,6 +256,30 @@ export function useSubscribeToPlan() {
     },
   });
 }
+
+export function useCreatePaypalCheckout() {
+  return useMutation({
+    mutationFn: (d: CreatePaypalCheckoutInput) =>
+      createPaypalCheckout({ data: d }),
+  });
+}
+
+export function useConfirmPaypalSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (providerSubscriptionId: string) =>
+      confirmPaypalSubscription({ data: { providerSubscriptionId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
+      queryClient.invalidateQueries({ queryKey: ["mindGymActivities"] });
+      queryClient.invalidateQueries({ queryKey: ["learningCatalog"] });
+      queryClient.invalidateQueries({ queryKey: ["myQuests"] });
+      queryClient.invalidateQueries({ queryKey: ["myGames"] });
+      queryClient.invalidateQueries({ queryKey: ["rewardsMarketplace"] });
+    },
+  });
+}
+
 
 export function useCancelMySubscription() {
   const queryClient = useQueryClient();

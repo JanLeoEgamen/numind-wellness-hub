@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PLANS } from "@/lib/mock-data";
 import { SiteLayout, PricingCards } from "@/components/layout/SiteChrome";
@@ -7,6 +7,8 @@ import {
   useSubscriptionPlans,
   useMySubscription,
   useSubscribeToPlan,
+  useCreatePaypalCheckout,
+  useConfirmPaypalSubscription,
 } from "@/lib/server-data";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -30,10 +32,35 @@ function PricingPage() {
   const plansQuery = useSubscriptionPlans();
   const mySub = useMySubscription(isAuthenticated);
   const subscribe = useSubscribeToPlan();
+  const paypalCheckout = useCreatePaypalCheckout();
+  const confirmPayPal = useConfirmPaypalSubscription();
+
+  // Handles the PayPal return URL: /pricing?paypal=success or =cancelled.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const params = new URLSearchParams(window.location.search);
+    const pp = params.get("paypal");
+    if (!pp) return;
+
+    if (pp === "success") {
+      // The PayPal subscription id is not in the query by default; rely on the
+      // pending row + the webhook. Trigger a refresh so entitlement updates.
+      toast.success("Payment approved! Activating your plan…");
+      confirmPayPal.mutate("", {
+        onSuccess: (res) => {
+          if (res.ok) toast.success("Your plan is active!");
+          else toast.error("Your plan could not be confirmed yet. It will activate shortly if payment was received.");
+        },
+        onError: () => toast.error("Could not confirm your subscription yet. It will activate shortly."),
+      });
+    } else {
+      toast.info("Checkout cancelled — your plan is unchanged.");
+    }
+    // Clear the query param.
+    window.history.replaceState({}, "", "/pricing");
+  }, [isAuthenticated, confirmPayPal]);
 
   const plans = plansQuery.data && plansQuery.data.length ? plansQuery.data : PLANS;
-  // Signed-in visitors get the live entitlement so the cards highlight their
-  // current plan and "Choose" actually switches it.
   const currentPlanSlug = !loading && isAuthenticated ? (mySub.data?.planSlug ?? null) : null;
 
   const handleChoose = (slug: string) => {
@@ -41,17 +68,26 @@ function PricingPage() {
       navigate({ to: "/signup" });
       return;
     }
+    const plan = plans.find((p) => p.slug === slug);
+    if (plan && plan.monthlyCents > 0) {
+      // Paid plan → PayPal checkout flow.
+      paypalCheckout.mutate(
+        { planSlug: slug, billingPeriod: annual ? "annual" : "monthly" },
+        {
+          onSuccess: (res) => {
+            window.location.href = res.approvalUrl;
+          },
+          onError: (e) => toast.error(e.message),
+        },
+      );
+      return;
+    }
+    // Free plan → instant switch.
     subscribe.mutate(
       { planSlug: slug, billingPeriod: annual ? "annual" : "monthly" },
       {
         onSuccess: (saved) => {
-          if (saved.plan && saved.plan.slug === "free") {
-            toast.success("You're now on the Free plan.");
-          } else {
-            toast.success(
-              `Welcome to ${saved.plan?.name ?? "NuMind Plus"}! Premium features are unlocked.`,
-            );
-          }
+          toast.success(saved.plan?.slug === "free" ? "You're now on the Free plan." : `Welcome to ${saved.plan?.name}!`);
         },
         onError: (e) => toast.error(e.message),
       },
@@ -96,7 +132,7 @@ function PricingPage() {
           />
         </div>
         <p className="mt-8 text-xs text-muted-foreground">
-          Prices are configured in the <Link to="/admin" className="focus-ring underline underline-offset-2">admin catalog</Link> and billed straight from the database.
+          Prices are configured in the <Link to="/admin" className="focus-ring underline underline-offset-2">admin catalog</Link>, billed securely with PayPal.
         </p>
       </div>
     </SiteLayout>
